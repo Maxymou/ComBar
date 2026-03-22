@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="64" fill="#000"/>
+  <!-- Background glow -->
+  <ellipse cx="256" cy="280" rx="200" ry="140" fill="#1a1000" opacity="0.5"/>
+  <!-- Devil horns left -->
+  <path d="M100 180 Q90 120 80 80 Q95 110 120 150 Z" fill="#FF2020" stroke="#fff" stroke-width="2"/>
+  <path d="M100 180 Q85 140 80 80" fill="none" stroke="#2040FF" stroke-width="4" stroke-linecap="round"/>
+  <!-- Devil horns right -->
+  <path d="M412 180 Q422 120 432 80 Q417 110 392 150 Z" fill="#FF2020" stroke="#fff" stroke-width="2"/>
+  <path d="M412 180 Q427 140 432 80" fill="none" stroke="#2040FF" stroke-width="4" stroke-linecap="round"/>
+  <!-- Main text: BÉARN -->
+  <text x="256" y="250" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="110" fill="#FFE000" stroke="#fff" stroke-width="3" paint-order="stroke">BÉARN</text>
+  <!-- Sub text: BIGORRE -->
+  <text x="256" y="370" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="100" fill="#FFE000" stroke="#fff" stroke-width="3" paint-order="stroke">BIGORRE</text>
+  <!-- Red swoosh -->
+  <path d="M120 400 Q200 430 300 410 Q380 395 420 380" fill="none" stroke="#FF2020" stroke-width="8" stroke-linecap="round"/>
+  <!-- Blue accent -->
+  <path d="M120 408 Q200 438 300 418 Q350 408 380 398" fill="none" stroke="#2040FF" stroke-width="4" stroke-linecap="round"/>
+</svg>
