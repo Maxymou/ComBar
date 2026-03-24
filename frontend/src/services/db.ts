@@ -66,7 +66,19 @@ export async function markOrdersSynced(ids: string[]): Promise<void> {
   await tx.done;
 }
 
-// Settings (e.g., custom prices)
+export async function deleteSyncedOrders(): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('pendingOrders', 'readwrite');
+  const all = await tx.store.getAll();
+  for (const order of all) {
+    if (order.synced) {
+      await tx.store.delete(order.id);
+    }
+  }
+  await tx.done;
+}
+
+// Settings (e.g., custom prices, admin PIN)
 export async function saveSetting(key: string, value: unknown): Promise<void> {
   const db = await getDb();
   await db.put('settings', { key, value });

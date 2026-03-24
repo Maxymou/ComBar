@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
+  client_order_id VARCHAR(100) UNIQUE,
   client_id VARCHAR(100),
   total NUMERIC(10,2) NOT NULL,
   is_happy_hour BOOLEAN NOT NULL DEFAULT false,
@@ -28,7 +29,8 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_change NUMERIC(10,2),
   status VARCHAR(20) NOT NULL DEFAULT 'completed',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  synced_from_offline BOOLEAN NOT NULL DEFAULT false
+  synced_from_offline BOOLEAN NOT NULL DEFAULT false,
+  client_priced BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS order_lines (
@@ -41,6 +43,18 @@ CREATE TABLE IF NOT EXISTS order_lines (
   subtotal NUMERIC(10,2) NOT NULL,
   is_bonus BOOLEAN NOT NULL DEFAULT false
 );
+`;
+
+const MIGRATION_SQL = `
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_order_id VARCHAR(100);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'orders_client_order_id_key'
+  ) THEN
+    ALTER TABLE orders ADD CONSTRAINT orders_client_order_id_key UNIQUE (client_order_id);
+  END IF;
+END $$;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_priced BOOLEAN NOT NULL DEFAULT false;
 `;
 
 const SEED_SQL = `
@@ -62,13 +76,25 @@ INSERT INTO products (id, name, icon, normal_price, hh_price, hh_bonus, category
   ('consignePichet', 'Csg. Pichet', '🪣', 5,  5,  false, 2, 2, true),
   ('kebab',          'Kebab',       '🥙', 5,  5,  false, 3, 0, true),
   ('vege',           'Végé',        '🥗', 5,  5,  false, 3, 1, true)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  icon = EXCLUDED.icon,
+  normal_price = EXCLUDED.normal_price,
+  hh_price = EXCLUDED.hh_price,
+  hh_bonus = EXCLUDED.hh_bonus,
+  category_id = EXCLUDED.category_id,
+  display_order = EXCLUDED.display_order,
+  active = EXCLUDED.active;
 `;
 
 export async function initDatabase(): Promise<void> {
   console.log('[DB] Initializing schema...');
   await pool.query(SCHEMA_SQL);
   console.log('[DB] Schema ready.');
+
+  console.log('[DB] Running migrations...');
+  await pool.query(MIGRATION_SQL);
+  console.log('[DB] Migrations complete.');
 
   console.log('[DB] Seeding data...');
   await pool.query(SEED_SQL);

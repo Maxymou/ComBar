@@ -21,7 +21,7 @@ export interface OrderLine {
 }
 
 export interface PendingOrder {
-  id: string;
+  id: string; // Used as clientOrderId for deduplication
   clientId?: string;
   total: number;
   isHappyHour: boolean;

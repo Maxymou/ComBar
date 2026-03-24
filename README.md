@@ -11,6 +11,9 @@ Application PWA mobile-first de caisse / prise de commande pour bar et restaurat
 - Fonctionne **hors ligne** (PWA offline-first)
 - Synchronise les commandes au retour du réseau
 - Installable sur iOS et Android (ajout à l'écran d'accueil)
+- **Déduplication des commandes** via `clientOrderId` (pas de doublons)
+- **Validation serveur** des commandes (totaux, quantités, prix)
+- **Éditeur de prix protégé** par PIN admin
 
 ## Stack technique
 
@@ -127,11 +130,29 @@ Copier `.env.example` en `.env` pour personnaliser :
 - Calculateur de monnaie
 - Enregistrement des commandes en local
 
-### Synchronisation
+### Synchronisation et sécurité
 
 - Au retour du réseau, les commandes en attente sont automatiquement envoyées au serveur
 - La synchronisation s'exécute toutes les 30 secondes quand l'appareil est en ligne
-- Les commandes synchronisées sont marquées comme telles dans IndexedDB
+- Chaque commande porte un **`clientOrderId`** (UUID v4 généré côté client)
+- Le backend utilise ce `clientOrderId` pour **garantir l'idempotence** : une commande ne peut jamais être insérée deux fois, même en cas de retry réseau ou de double sync
+- Les commandes synchronisées sont **automatiquement supprimées** d'IndexedDB après confirmation serveur
+- En cas d'échec partiel, seules les commandes réussies sont supprimées ; les autres seront réessayées au prochain cycle
+
+### Validation serveur
+
+Le backend **ne fait jamais confiance au frontend** :
+- Chaque ligne est validée : `quantity > 0`, `unitPrice >= 0`, `subtotal = quantity × unitPrice`
+- Le total est **recalculé côté serveur** (le total client est ignoré en cas de différence)
+- Les prix sont comparés avec la base de données ; si un prix a été modifié côté client (via l'éditeur de prix), la commande est acceptée mais marquée `client_priced = true`
+
+## Éditeur de prix
+
+L'accès à l'éditeur de prix est protégé par un **PIN admin** (par défaut : `0000`).
+
+Pour y accéder : cliquer sur le logo dans le header → saisir le PIN.
+
+Le PIN est stocké localement dans IndexedDB (clé `adminPin`).
 
 ## Vérifier que tout fonctionne
 
@@ -141,6 +162,7 @@ Copier `.env.example` en `.env` pour personnaliser :
 4. **PWA installable** : sur mobile, "Ajouter à l'écran d'accueil"
 5. **Offline** : activer le mode avion → l'application reste fonctionnelle
 6. **Sync** : créer une commande offline → désactiver le mode avion → la commande est synchronisée
+7. **Idempotence** : envoyer deux fois la même commande → une seule commande en base
 
 ## API Backend
 
@@ -148,17 +170,48 @@ Copier `.env.example` en `.env` pour personnaliser :
 |---------|-------|-------------|
 | GET | `/health` | Statut du serveur et de la DB |
 | GET | `/api/products` | Liste des produits actifs |
-| POST | `/api/orders` | Créer une commande |
-| POST | `/api/orders/sync` | Synchroniser des commandes offline (batch) |
+| POST | `/api/orders` | Créer une commande (idempotent via `clientOrderId`) |
+| POST | `/api/orders/sync` | Synchroniser des commandes offline (batch, idempotent) |
+
+### Format d'une commande (POST /api/orders)
+
+```json
+{
+  "clientOrderId": "550e8400-e29b-41d4-a716-446655440000",
+  "total": 10.00,
+  "isHappyHour": false,
+  "paymentGiven": 20.00,
+  "paymentChange": 10.00,
+  "lines": [
+    {
+      "productId": "biere25",
+      "productName": "Bière 25cl",
+      "quantity": 5,
+      "unitPrice": 2.00,
+      "subtotal": 10.00,
+      "isBonus": false
+    }
+  ]
+}
+```
+
+Le `clientOrderId` est optionnel mais **fortement recommandé** pour éviter les doublons.
 
 ## Schéma base de données
 
 - **categories** : id, name, display_order
 - **products** : id, name, icon, normal_price, hh_price, hh_bonus, category_id, display_order, active
-- **orders** : id, client_id, total, is_happy_hour, payment_given, payment_change, status, created_at, synced_from_offline
+- **orders** : id, **client_order_id** (UNIQUE), client_id, total, is_happy_hour, payment_given, payment_change, status, created_at, synced_from_offline, **client_priced**
 - **order_lines** : id, order_id, product_id, product_name, quantity, unit_price, subtotal, is_bonus
 
-Le schéma et les données initiales sont créés automatiquement au démarrage du backend.
+Le schéma, les migrations et les données initiales sont créés automatiquement au démarrage du backend.
+
+### Colonnes ajoutées (hardening)
+
+| Colonne | Table | Description |
+|---------|-------|-------------|
+| `client_order_id` | orders | UUID client pour déduplication (UNIQUE) |
+| `client_priced` | orders | `true` si un prix a été modifié côté client par rapport à la DB |
 
 ## Remplacement du logo
 

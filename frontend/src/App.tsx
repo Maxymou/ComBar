@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Screen, OrderLine, PendingOrder, Product } from './types';
 import { useProducts } from './hooks/useProducts';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
@@ -11,7 +11,6 @@ import Summary from './components/Summary';
 import Payment from './components/Payment';
 import PriceEditor from './components/PriceEditor';
 import './App.css';
-import { useEffect } from 'react';
 
 function initPrices(products: Product[]): Record<string, number> {
   const p: Record<string, number> = {};
@@ -38,12 +37,19 @@ export default function App() {
   const [given, setGiven] = useState<Record<string, number>>({});
   const [prices, setPrices] = useState<Record<string, number>>(() => initPrices(products));
   const [confirmFeedback, setConfirmFeedback] = useState(false);
+  const [adminPin, setAdminPin] = useState('0000');
 
-  // Re-init prices when products change (e.g., loaded from API)
+  // Load saved PIN and prices on mount / products change
+  useEffect(() => {
+    getSetting<string>('adminPin').then(pin => {
+      if (pin) setAdminPin(pin);
+    });
+  }, []);
+
   useEffect(() => {
     getSetting<Record<string, number>>('customPrices').then(saved => {
       if (saved) {
-        setPrices(prev => ({ ...initPrices(products), ...saved }));
+        setPrices(() => ({ ...initPrices(products), ...saved }));
       } else {
         setPrices(initPrices(products));
       }
@@ -91,6 +97,16 @@ export default function App() {
     saveSetting('customPrices', fresh);
   }, [products]);
 
+  // PIN-protected navigation to price editor
+  const handleNavigatePrices = useCallback(() => {
+    const input = window.prompt('Entrez le PIN admin :');
+    if (input === adminPin) {
+      setScreen('prices');
+    } else if (input !== null) {
+      window.alert('PIN incorrect');
+    }
+  }, [adminPin]);
+
   // Build order lines
   const bonusShooters = Object.entries(order)
     .filter(([id]) => isHH && products.find(i => i.id === id)?.hhBonus)
@@ -133,7 +149,7 @@ export default function App() {
     const change = Math.max(0, Math.round((totalGiven - total) * 100) / 100);
 
     const pendingOrder: PendingOrder = {
-      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: crypto.randomUUID(),
       total,
       isHappyHour: isHH,
       paymentGiven: totalGiven,
@@ -193,7 +209,7 @@ export default function App() {
         isOnline={isOnline}
         pendingCount={pendingCount}
         onToggleHH={toggleHH}
-        onNavigate={setScreen}
+        onNavigatePrices={handleNavigatePrices}
       />
 
       {screen === 'select' && (

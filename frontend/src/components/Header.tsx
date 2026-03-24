@@ -1,21 +1,19 @@
-import { Screen } from '../types';
-
 interface HeaderProps {
   isHH: boolean;
   isOnline: boolean;
   pendingCount: number;
   onToggleHH: () => void;
-  onNavigate: (screen: Screen) => void;
+  onNavigatePrices: () => void;
 }
 
-export default function Header({ isHH, isOnline, pendingCount, onToggleHH, onNavigate }: HeaderProps) {
+export default function Header({ isHH, isOnline, pendingCount, onToggleHH, onNavigatePrices }: HeaderProps) {
   return (
     <div className="header">
       <div className="header-left">
-        <div className="title title-btn" onClick={() => onNavigate('prices')}>
+        <button className="title title-btn btn-reset-style" onClick={onNavigatePrices} type="button">
           <img src="/logo-192.png" alt="ComBar" className="header-logo" />
           {isHH && <span className="hh-flash">HH</span>}
-        </div>
+        </button>
       </div>
       <div className="header-right">
         <div className={`sync-indicator ${isOnline ? 'online' : 'offline'}`}>

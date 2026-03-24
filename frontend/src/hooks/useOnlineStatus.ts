@@ -5,7 +5,6 @@ import { getUnsyncedOrders } from '../services/db';
 export function useOnlineStatus() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
-  const [lastSyncCount, setLastSyncCount] = useState(0);
 
   const checkPending = useCallback(async () => {
     const unsynced = await getUnsyncedOrders();
@@ -15,7 +14,6 @@ export function useOnlineStatus() {
   const doSync = useCallback(async () => {
     const synced = await trySyncOrders();
     if (synced > 0) {
-      setLastSyncCount(synced);
       await checkPending();
     }
   }, [checkPending]);
@@ -46,5 +44,5 @@ export function useOnlineStatus() {
     };
   }, [doSync, checkPending]);
 
-  return { isOnline, pendingCount, lastSyncCount, refreshPending: checkPending };
+  return { isOnline, pendingCount, refreshPending: checkPending };
 }

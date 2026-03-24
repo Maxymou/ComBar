@@ -10,6 +10,7 @@ export async function fetchProducts(): Promise<Product[]> {
 
 export async function syncOrders(orders: PendingOrder[]): Promise<{ synced: { index: number; id?: number; error?: string }[] }> {
   const payload = orders.map(o => ({
+    clientOrderId: o.id,
     clientId: o.clientId,
     total: o.total,
     isHappyHour: o.isHappyHour,
@@ -40,6 +41,7 @@ export async function submitOrder(order: PendingOrder): Promise<{ id: number }> 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      clientOrderId: order.id,
       clientId: order.clientId,
       total: order.total,
       isHappyHour: order.isHappyHour,

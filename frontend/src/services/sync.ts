@@ -1,4 +1,4 @@
-import { getUnsyncedOrders, markOrdersSynced } from './db';
+import { getUnsyncedOrders, markOrdersSynced, deleteSyncedOrders } from './db';
 import { syncOrders } from './api';
 
 let syncing = false;
@@ -18,6 +18,8 @@ export async function trySyncOrders(): Promise<number> {
 
     if (successIds.length > 0) {
       await markOrdersSynced(successIds);
+      // Clean up synced orders from IndexedDB
+      await deleteSyncedOrders();
     }
 
     return successIds.length;

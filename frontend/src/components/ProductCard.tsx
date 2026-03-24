@@ -19,16 +19,16 @@ export default function ProductCard({ item, qty, price, isHH, onAdd, onRemove }:
   const priceLabel = showBonus ? `${price}€+🥃` : `${price} €`;
 
   return (
-    <div className={cardClass} onClick={onAdd}>
+    <button className={`${cardClass} btn-reset-style`} onClick={onAdd} type="button">
       {showBonus && <span className="hh-tag">+🥃</span>}
       {qty > 0 && <span className="qty-badge">{qty}</span>}
       {qty > 0 && <span className="card-price-top">{priceLabel}</span>}
       {qty > 0 && (
-        <button className="minus-btn" onClick={e => { e.stopPropagation(); onRemove(); }}>−</button>
+        <button className="minus-btn" onClick={e => { e.stopPropagation(); onRemove(); }} type="button">−</button>
       )}
       <span className="card-icon">{item.icon}</span>
       <span className="card-name">{item.name}</span>
       <span className="card-price" style={{ visibility: qty > 0 ? 'hidden' : 'visible' }}>{priceLabel}</span>
-    </div>
+    </button>
   );
 }
