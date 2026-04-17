@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PresenceDevice } from '../types';
 import { SyncState } from '../hooks/useOnlineStatus';
+import OnlineDevices from './OnlineDevices';
 
 interface HeaderProps {
   isHH: boolean;
@@ -186,20 +187,7 @@ export default function Header({
                   </div>
 
                   <div className="devices-section-title">Connectés</div>
-                  {connectedDevices.length > 0 ? (
-                    <ul className="connected-devices-list">
-                      {connectedDevices.map(device => (
-                        <li className="connected-device-row" key={device.deviceId}>
-                          <span className="connected-device-main">
-                            <span className="connected-device-name">{device.deviceName || 'Terminal'}</span>
-                            <span className="connected-device-status">en ligne</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="connected-devices-fallback">Aucun terminal connecté</div>
-                  )}
+                  <OnlineDevices devices={connectedDevices} />
 
                   <div className="devices-section-title">Actifs récemment</div>
                   {recentlyActiveDevices.length > 0 ? (

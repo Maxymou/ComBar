@@ -14,6 +14,8 @@ export interface RealtimeState {
   clientsCount: number;
   connectedDevices: PresenceDevice[];
   presence: RealtimePresenceSnapshot;
+  version: number;
+  updatedAt: string;
 }
 
 const DEFAULT_STATE: RealtimeState = {
@@ -27,6 +29,8 @@ const DEFAULT_STATE: RealtimeState = {
     connected: [],
     recentlyActive: [],
   },
+  version: 0,
+  updatedAt: new Date(0).toISOString(),
 };
 
 function sanitizePrices(value: unknown): Record<string, number> {
@@ -43,9 +47,22 @@ function sanitizePrices(value: unknown): Record<string, number> {
   return sanitized;
 }
 
+function sanitizeUpdatedAt(value: unknown): string {
+  if (typeof value !== 'string') {
+    return new Date().toISOString();
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString();
+  }
+
+  return parsed.toISOString();
+}
+
 export function sanitizeState(value: unknown): RealtimeState {
   if (!value || typeof value !== 'object') {
-    return { ...DEFAULT_STATE };
+    return { ...DEFAULT_STATE, updatedAt: new Date().toISOString() };
   }
 
   const input = value as Partial<RealtimeState>;
@@ -61,6 +78,8 @@ export function sanitizeState(value: unknown): RealtimeState {
       connected: [],
       recentlyActive: [],
     },
+    version: typeof input.version === 'number' && Number.isFinite(input.version) ? Math.max(0, Math.floor(input.version)) : 0,
+    updatedAt: sanitizeUpdatedAt(input.updatedAt),
   };
 }
 
@@ -71,13 +90,13 @@ export async function loadRealtimeState(): Promise<RealtimeState> {
     );
 
     if (result.rows.length === 0) {
-      return { ...DEFAULT_STATE };
+      return { ...DEFAULT_STATE, updatedAt: new Date().toISOString() };
     }
 
     return sanitizeState(result.rows[0].value);
   } catch (err) {
     console.error('[Realtime] Failed to load state from DB:', err);
-    return { ...DEFAULT_STATE };
+    return { ...DEFAULT_STATE, updatedAt: new Date().toISOString() };
   }
 }
 
@@ -85,6 +104,8 @@ export async function persistRealtimeState(state: RealtimeState): Promise<void> 
   const persisted = {
     prices: sanitizePrices(state.prices),
     happyHour: Boolean(state.happyHour),
+    version: Math.max(0, Math.floor(state.version || 0)),
+    updatedAt: sanitizeUpdatedAt(state.updatedAt),
   };
 
   await pool.query(
