@@ -8,7 +8,22 @@ import { registerSW } from 'virtual:pwa-register';
 
 const debug = isDebugViewportEnabled();
 
-registerSW({ immediate: true });
+const updateSW = registerSW({
+  immediate: true,
+  onRegisteredSW(swUrl) {
+    console.info('[PWA] Service worker registered:', swUrl);
+  },
+  onRegisterError(error) {
+    console.error('[PWA] Service worker registration error:', error);
+  },
+  onNeedRefresh() {
+    console.info('[PWA] New service worker detected, updating now...');
+    void updateSW(true);
+  },
+  onOfflineReady() {
+    console.info('[PWA] App is ready to work offline.');
+  },
+});
 
 installViewportResolver({ debug });
 
