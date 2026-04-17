@@ -17,7 +17,7 @@ interface HeaderProps {
   pwaEnabled: boolean;
   updateAvailable: boolean;
   onToggleHH: () => void;
-  onNavigatePrices: () => void;
+  onOpenMenu: () => void;
   onForceSync: () => void;
   onApplyUpdate: () => void;
 }
@@ -55,7 +55,7 @@ export default function Header({
   pwaEnabled,
   updateAvailable,
   onToggleHH,
-  onNavigatePrices,
+  onOpenMenu,
   onForceSync,
   onApplyUpdate,
 }: HeaderProps) {
@@ -116,7 +116,7 @@ export default function Header({
     <div className="header-wrap">
       <div className="header">
         <div className="header-left">
-          <button className="title title-btn btn-reset-style" onClick={onNavigatePrices} type="button">
+          <button className="title title-btn btn-reset-style" onClick={onOpenMenu} type="button" aria-label="Ouvrir le menu">
             <img src="/logo-192.png" alt="ComBar" className="header-logo" />
             {isHH && <span className="hh-flash">HH</span>}
           </button>
