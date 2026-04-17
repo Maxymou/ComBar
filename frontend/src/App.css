@@ -1162,3 +1162,108 @@ body::before{
   80% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+
+/* ── SIDE DRAWER ── */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+  z-index: 39;
+}
+.drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.side-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  width: min(78vw, 340px);
+  background: #0d0d0d;
+  border-right: 1px solid #272727;
+  transform: translateX(-102%);
+  transition: transform 0.24s ease;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--sat) + 18px) 14px calc(var(--sab) + 14px) calc(var(--sal) + 14px);
+  box-shadow: 8px 0 28px rgba(0, 0, 0, 0.45);
+}
+.side-drawer.open {
+  transform: translateX(0);
+}
+.side-drawer-header {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #9b9b9b;
+  margin-bottom: 12px;
+}
+.side-drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.side-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid #242424;
+  background: #131313;
+  color: #f1f1f1;
+  border-radius: 12px;
+  padding: 14px 12px;
+  min-height: 50px;
+  text-align: left;
+}
+.side-drawer-item.active {
+  border-color: #f3b63a;
+}
+.side-drawer-item:disabled {
+  opacity: 0.72;
+}
+.side-drawer-item-icon {
+  font-size: 1.1rem;
+}
+.side-drawer-item-text {
+  flex: 1;
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+.side-drawer-item-badge {
+  font-size: 0.65rem;
+  color: #8f8f8f;
+}
+
+/* ── PLACEHOLDER VIEWS ── */
+.placeholder-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px;
+}
+.placeholder-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.placeholder-text {
+  color: #aaa;
+  font-size: 0.88rem;
+}
+.placeholder-back-btn {
+  border: 1px solid #313131;
+  background: #171717;
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
