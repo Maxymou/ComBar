@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_PWA?: string;
   readonly VITE_APP_VERSION?: string;
   readonly VITE_BUILD_TIMESTAMP?: string;
+  readonly VITE_SYNC_INTERVAL_MS?: string;
+  readonly VITE_SYNC_MAX_AUTO_RETRIES?: string;
 }
 
 interface ImportMeta {

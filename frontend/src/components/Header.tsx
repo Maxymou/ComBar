@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PresenceDevice } from '../types';
+import { SyncState } from '../hooks/useOnlineStatus';
 
 interface HeaderProps {
   isHH: boolean;
   isOnline: boolean;
   pendingCount: number;
+  syncState: SyncState;
   onlineUsers: number;
   connectedDevices: PresenceDevice[];
   recentlyActiveDevices: PresenceDevice[];
@@ -13,8 +15,11 @@ interface HeaderProps {
   buildVersion: string;
   buildTimestamp: string;
   pwaEnabled: boolean;
+  updateAvailable: boolean;
   onToggleHH: () => void;
   onNavigatePrices: () => void;
+  onForceSync: () => void;
+  onApplyUpdate: () => void;
 }
 
 function formatLastSeen(isoDate: string): string {
@@ -39,6 +44,7 @@ export default function Header({
   isHH,
   isOnline,
   pendingCount,
+  syncState,
   onlineUsers,
   connectedDevices,
   recentlyActiveDevices,
@@ -47,8 +53,11 @@ export default function Header({
   buildVersion,
   buildTimestamp,
   pwaEnabled,
+  updateAvailable,
   onToggleHH,
   onNavigatePrices,
+  onForceSync,
+  onApplyUpdate,
 }: HeaderProps) {
   const [isDevicesPopoverOpen, setIsDevicesPopoverOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState(localDeviceName);
@@ -77,6 +86,21 @@ export default function Header({
   }, [isDevicesPopoverOpen]);
 
   const canOpenDevicesPopover = isOnline;
+  const syncClassName =
+    !isOnline || syncState === 'offline'
+      ? 'offline'
+      : syncState === 'pending' || syncState === 'error'
+        ? 'pending'
+        : syncState === 'syncing'
+          ? 'syncing'
+          : 'online';
+  const syncLabel = useMemo(() => {
+    if (!isOnline || syncState === 'offline') return '🔴 Hors ligne';
+    if (syncState === 'syncing') return '🔄 Synchronisation...';
+    if (pendingCount > 0 || syncState === 'pending') return `🟡 ${pendingCount} en attente`;
+    if (syncState === 'error') return `🟡 ${pendingCount} en attente (erreur réseau)`;
+    return '🟢 Synchronisé';
+  }, [isOnline, pendingCount, syncState]);
 
   const handleRename = async () => {
     if (isRenaming) return;
@@ -100,7 +124,7 @@ export default function Header({
         <div className="header-right">
           <div className="header-status-block" ref={popoverRef}>
             <div
-              className={`sync-indicator ${isOnline ? 'online' : 'offline'} ${canOpenDevicesPopover ? 'clickable' : ''}`}
+              className={`sync-indicator ${syncClassName} ${canOpenDevicesPopover ? 'clickable' : ''}`}
               role={canOpenDevicesPopover ? 'button' : undefined}
               tabIndex={canOpenDevicesPopover ? 0 : undefined}
               aria-expanded={canOpenDevicesPopover ? isDevicesPopoverOpen : undefined}
@@ -122,14 +146,25 @@ export default function Header({
             >
               <span className="sync-dot" />
               <span className="sync-text">
-                {isOnline ? `En ligne ${onlineUsers}` : 'Hors ligne'}
-                {pendingCount > 0 && ` (${pendingCount})`}
+                {syncLabel}
               </span>
+            </div>
+            <div className="sync-actions-row">
+              {isOnline && (
+                <button type="button" className="sync-action-btn" onClick={onForceSync}>
+                  Forcer synchro
+                </button>
+              )}
+              {updateAvailable && (
+                <button type="button" className="sync-action-btn update" onClick={onApplyUpdate}>
+                  Mettre à jour
+                </button>
+              )}
             </div>
             {isDevicesPopoverOpen && (
               <div className="connected-devices-popover" role="dialog" aria-label="Terminaux connectés">
                 <div className="connected-devices-title">Terminaux</div>
-                <div className="connected-devices-summary">{onlineUsers} connectés</div>
+                <div className="connected-devices-summary">{onlineUsers} connectés · {syncLabel}</div>
 
                 <div className="terminal-rename-row">
                   <input

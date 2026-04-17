@@ -30,6 +30,9 @@ export interface PendingOrder {
   lines: OrderLine[];
   createdAt: string;
   synced: boolean;
+  retries: number;
+  lastAttemptAt?: string;
+  lastError?: string;
 }
 
 export type Screen = 'select' | 'summary' | 'monnaie' | 'prices';
