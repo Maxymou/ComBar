@@ -24,50 +24,52 @@ export default function ProductGrid({ products, order, isHH, prices, onAdd, onRe
   const totalItems = Object.values(order).reduce((s, v) => s + v, 0);
 
   return (
-    <>
-      <div className="sec">Boissons</div>
-      <div className="grid drinks">
-        {drinks.map(item => (
-          <ProductCard
-            key={item.id}
-            item={item}
-            qty={order[item.id] || 0}
-            price={getPrice(item, isHH, prices)}
-            isHH={isHH}
-            onAdd={() => onAdd(item.id)}
-            onRemove={() => onRemove(item.id)}
-          />
-        ))}
-      </div>
+    <div className="select-screen">
+      <div className="select-scroll">
+        <div className="sec">Boissons</div>
+        <div className="grid drinks">
+          {drinks.map(item => (
+            <ProductCard
+              key={item.id}
+              item={item}
+              qty={order[item.id] || 0}
+              price={getPrice(item, isHH, prices)}
+              isHH={isHH}
+              onAdd={() => onAdd(item.id)}
+              onRemove={() => onRemove(item.id)}
+            />
+          ))}
+        </div>
 
-      <div className="sec">Consignes</div>
-      <div className="grid consignes">
-        {consignes.map(item => (
-          <ProductCard
-            key={item.id}
-            item={item}
-            qty={order[item.id] || 0}
-            price={getPrice(item, false, prices)}
-            isHH={false}
-            onAdd={() => onAdd(item.id)}
-            onRemove={() => onRemove(item.id)}
-          />
-        ))}
-      </div>
+        <div className="sec">Consignes</div>
+        <div className="grid consignes">
+          {consignes.map(item => (
+            <ProductCard
+              key={item.id}
+              item={item}
+              qty={order[item.id] || 0}
+              price={getPrice(item, false, prices)}
+              isHH={false}
+              onAdd={() => onAdd(item.id)}
+              onRemove={() => onRemove(item.id)}
+            />
+          ))}
+        </div>
 
-      <div className="sec">Sandwiches</div>
-      <div className="grid food">
-        {food.map(item => (
-          <ProductCard
-            key={item.id}
-            item={item}
-            qty={order[item.id] || 0}
-            price={getPrice(item, false, prices)}
-            isHH={false}
-            onAdd={() => onAdd(item.id)}
-            onRemove={() => onRemove(item.id)}
-          />
-        ))}
+        <div className="sec">Sandwiches</div>
+        <div className="grid food">
+          {food.map(item => (
+            <ProductCard
+              key={item.id}
+              item={item}
+              qty={order[item.id] || 0}
+              price={getPrice(item, false, prices)}
+              isHH={false}
+              onAdd={() => onAdd(item.id)}
+              onRemove={() => onRemove(item.id)}
+            />
+          ))}
+        </div>
       </div>
 
       <button className="btn-validate" disabled={totalItems === 0} onClick={onValidate}>
@@ -77,6 +79,6 @@ export default function ProductGrid({ products, order, isHH, prices, onAdd, onRe
       <button className="btn-cancel-order" disabled={totalItems === 0} onClick={onCancel}>
         Annuler la sélection
       </button>
-    </>
+    </div>
   );
 }
