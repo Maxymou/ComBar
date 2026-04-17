@@ -7,7 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'logo-192.png', 'logo-512.png'],
+      injectRegister: null,
+      manifestFilename: 'manifest.json',
+      includeAssets: ['favicon.ico', 'logo-192.png', 'logo-512.png', 'manifest.json'],
       manifest: {
         name: 'Béarn Bigorre - Caisse',
         short_name: 'ComBar',
