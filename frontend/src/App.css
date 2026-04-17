@@ -30,16 +30,35 @@ body{
 }
 .btn-reset-style{background:none;border:none;color:inherit;font:inherit;cursor:pointer;text-align:inherit;display:flex;flex-direction:column;align-items:center;width:100%;}
 
-/* ── APP SHELL ── */
-.app {
+/* ── APP SHELL (Layer A: true fullscreen root, no transform) ── */
+.app-shell {
   position: fixed;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
+  width: 100%;
+  height: var(--app-height);
+  overflow: hidden;
+  background: #000;
+}
+.app-shell::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--sab);
+  background: #000;
+  pointer-events: none;
+}
+.app-shell.hh { background: #07000f; }
+.app-shell.hh::after { background: #07000f; }
+
+/* ── APP FRAME (Layer B: centered inner container) ── */
+.app {
   width: 100%;
   max-width: 480px;
-  height: var(--app-height);
-  min-height: var(--app-height);
+  height: 100%;
+  margin: 0 auto;
+  position: relative;
   background: #000;
   color: #fff;
   font-family: 'Barlow', sans-serif;
@@ -48,16 +67,6 @@ body{
   padding: calc(var(--sat) + 10px) calc(var(--sar) + 10px) calc(var(--sab) + 12px) calc(var(--sal) + 10px);
   overflow: hidden;
   isolation: isolate;
-}
-.app::after{
-  content:'';
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  height:var(--sab);
-  background:#000;
-  pointer-events:none;
 }
 .app.hh { background: #07000f; }
 

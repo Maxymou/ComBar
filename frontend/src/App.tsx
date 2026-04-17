@@ -193,16 +193,19 @@ export default function App() {
 
   if (confirmFeedback) {
     return (
-      <div className={`app${isHH ? ' hh' : ''}`}>
-        <div className="confirm-overlay">
-          <div className="confirm-check">✓</div>
-          <div className="confirm-text">Commande enregistrée</div>
+      <div className={`app-shell${isHH ? ' hh' : ''}`}>
+        <div className={`app${isHH ? ' hh' : ''}`}>
+          <div className="confirm-overlay">
+            <div className="confirm-check">✓</div>
+            <div className="confirm-text">Commande enregistrée</div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
+    <div className={`app-shell${isHH ? ' hh' : ''}`}>
     <div className={`app${isHH ? ' hh' : ''}`}>
       <Header
         isHH={isHH}
@@ -262,6 +265,7 @@ export default function App() {
           onGoBack={() => setScreen('select')}
         />
       )}
+    </div>
     </div>
   );
 }
