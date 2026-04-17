@@ -41,16 +41,26 @@ export interface Denomination {
   type: 'billet' | 'piece';
 }
 
+export interface PresenceDevice {
+  deviceId: string;
+  deviceName: string;
+  connected: boolean;
+  connectedAt: string | null;
+  lastSeenAt: string;
+  lastDisconnectedAt: string | null;
+}
+
+export interface RealtimePresenceSnapshot {
+  connectedCount: number;
+  connected: PresenceDevice[];
+  recentlyActive: PresenceDevice[];
+}
+
 export interface RealtimeState {
   prices: Record<string, number>;
   happyHour: boolean;
   clients: number; // Legacy counter kept for backward compatibility
   clientsCount: number;
-  connectedDevices: ConnectedDevice[];
-}
-
-export interface ConnectedDevice {
-  deviceId: string;
-  deviceName: string;
-  connectedAt: string;
+  connectedDevices: PresenceDevice[];
+  presence: RealtimePresenceSnapshot;
 }

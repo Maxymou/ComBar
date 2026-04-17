@@ -1,17 +1,19 @@
 import pool from '../db/pool';
+import { PresenceDevice } from './presence';
+
+export interface RealtimePresenceSnapshot {
+  connectedCount: number;
+  connected: PresenceDevice[];
+  recentlyActive: PresenceDevice[];
+}
 
 export interface RealtimeState {
   prices: Record<string, number>;
   happyHour: boolean;
   clients: number;
   clientsCount: number;
-  connectedDevices: ConnectedDevice[];
-}
-
-export interface ConnectedDevice {
-  deviceId: string;
-  deviceName: string;
-  connectedAt: string;
+  connectedDevices: PresenceDevice[];
+  presence: RealtimePresenceSnapshot;
 }
 
 const DEFAULT_STATE: RealtimeState = {
@@ -20,6 +22,11 @@ const DEFAULT_STATE: RealtimeState = {
   clients: 0,
   clientsCount: 0,
   connectedDevices: [],
+  presence: {
+    connectedCount: 0,
+    connected: [],
+    recentlyActive: [],
+  },
 };
 
 function sanitizePrices(value: unknown): Record<string, number> {
@@ -49,6 +56,11 @@ export function sanitizeState(value: unknown): RealtimeState {
     clients: 0,
     clientsCount: 0,
     connectedDevices: [],
+    presence: {
+      connectedCount: 0,
+      connected: [],
+      recentlyActive: [],
+    },
   };
 }
 

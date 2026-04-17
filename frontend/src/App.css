@@ -221,7 +221,7 @@ body::before{
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  width: min(78vw, 240px);
+  width: min(88vw, 320px);
   background: #101010;
   border: 1px solid #2d2d2d;
   border-radius: 10px;
@@ -234,7 +234,48 @@ body::before{
   letter-spacing: 0.5px;
   color: #cfcfcf;
   font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.connected-devices-summary {
+  font-size: 0.58rem;
+  color: #8f8f8f;
+  margin-bottom: 8px;
+}
+.terminal-rename-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.terminal-rename-input {
+  flex: 1;
+  min-width: 0;
+  background: #0a0a0a;
+  border: 1px solid #2e2e2e;
+  color: #f4f4f4;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.62rem;
+}
+.terminal-rename-btn {
+  border: 1px solid #3a3a3a;
+  background: #151515;
+  color: #d8d8d8;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+.terminal-rename-btn:disabled {
+  opacity: 0.6;
+}
+.devices-section-title {
+  margin-top: 4px;
   margin-bottom: 6px;
+  font-size: 0.58rem;
+  color: #9f9f9f;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 .connected-devices-list {
   list-style: none;
