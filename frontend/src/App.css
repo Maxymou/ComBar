@@ -124,13 +124,24 @@ body{
 .select-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
 /* ── HEADER ── */
+.header-wrap {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  margin-bottom: 10px;
   gap: 8px;
+}
+.build-info {
+  margin-top: 2px;
+  font-size: 0.56rem;
+  letter-spacing: 0.4px;
+  color: #666;
+  text-align: right;
+  font-family: 'Barlow', sans-serif;
 }
 .header-left { display: flex; align-items: center; }
 .header-right { display: flex; align-items: center; gap: 8px; }

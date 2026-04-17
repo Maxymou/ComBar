@@ -2,6 +2,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+ARG CACHE_BUST=1
+RUN echo "Cache bust token: ${CACHE_BUST}"
+
 COPY package.json package-lock.json* ./
 RUN npm ci
 
@@ -10,9 +13,13 @@ COPY public/ public/
 COPY src/ src/
 
 ARG VITE_API_URL=""
+ARG VITE_ENABLE_PWA="false"
+ARG VITE_APP_VERSION="dev"
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_ENABLE_PWA=${VITE_ENABLE_PWA}
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 
-RUN npm run build
+RUN rm -rf dist && VITE_BUILD_TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" npm run build
 
 FROM nginx:1.25-alpine
 

@@ -4,26 +4,31 @@ import App from './App';
 import DebugOverlay from './components/DebugOverlay';
 import { installViewportResolver } from './viewport';
 import { isDebugViewportEnabled } from './debug';
-import { registerSW } from 'virtual:pwa-register';
 
 const debug = isDebugViewportEnabled();
 
-const updateSW = registerSW({
-  immediate: true,
-  onRegisteredSW(swUrl) {
-    console.info('[PWA] Service worker registered:', swUrl);
-  },
-  onRegisterError(error) {
-    console.error('[PWA] Service worker registration error:', error);
-  },
-  onNeedRefresh() {
-    console.info('[PWA] New service worker detected, updating now...');
-    void updateSW(true);
-  },
-  onOfflineReady() {
-    console.info('[PWA] App is ready to work offline.');
-  },
-});
+const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
+const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP || 'unknown';
+const pwaEnabled = import.meta.env.VITE_ENABLE_PWA === 'true';
+
+console.info(`[Build] ComBar version ${buildVersion} built at ${buildTimestamp}`);
+console.info(`[Build] PWA enabled: ${pwaEnabled}`);
+
+if (!pwaEnabled && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(registration => {
+      void registration.unregister();
+    });
+  });
+
+  if ('caches' in window) {
+    caches.keys().then(keys => {
+      keys.forEach(key => {
+        void caches.delete(key);
+      });
+    });
+  }
+}
 
 installViewportResolver({ debug });
 
