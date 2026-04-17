@@ -28,7 +28,7 @@ export default function Summary({
   const allChecked = totalToCheck > 0 && totalChecked === totalToCheck;
 
   return (
-    <div className="summary">
+    <div className="summary screen-wrapper">
       <div className={`total-card${allChecked ? ' total-done' : ''}`}>
         <div>
           <div className="total-label">Total à payer</div>

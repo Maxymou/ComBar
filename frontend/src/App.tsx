@@ -10,6 +10,7 @@ import ProductGrid from './components/ProductGrid';
 import Summary from './components/Summary';
 import Payment from './components/Payment';
 import PriceEditor from './components/PriceEditor';
+import { isDebugViewportEnabled } from './debug';
 import './App.css';
 
 function initPrices(products: Product[]): Record<string, number> {
@@ -27,6 +28,7 @@ function getPrice(item: Product, isHH: boolean, prices: Record<string, number>):
 }
 
 export default function App() {
+  const viewportDebug = isDebugViewportEnabled();
   const { products } = useProducts();
   const { isOnline, pendingCount, refreshPending } = useOnlineStatus();
 
@@ -193,8 +195,8 @@ export default function App() {
 
   if (confirmFeedback) {
     return (
-      <div className={`app-shell${isHH ? ' hh' : ''}`}>
-        <div className={`app${isHH ? ' hh' : ''}`}>
+      <div className={`app-shell${isHH ? ' hh' : ''}${viewportDebug ? ' viewport-debug-shell' : ''}`}>
+        <div className={`app${isHH ? ' hh' : ''}${viewportDebug ? ' viewport-debug-app' : ''}`}>
           <div className="confirm-overlay">
             <div className="confirm-check">✓</div>
             <div className="confirm-text">Commande enregistrée</div>
@@ -205,8 +207,8 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell${isHH ? ' hh' : ''}`}>
-    <div className={`app${isHH ? ' hh' : ''}`}>
+    <div className={`app-shell${isHH ? ' hh' : ''}${viewportDebug ? ' viewport-debug-shell' : ''}`}>
+    <div className={`app${isHH ? ' hh' : ''}${viewportDebug ? ' viewport-debug-app' : ''}`}>
       <Header
         isHH={isHH}
         isOnline={isOnline}
@@ -215,7 +217,7 @@ export default function App() {
         onNavigatePrices={handleNavigatePrices}
       />
 
-      <main className="app-content">
+      <main className={`app-content${viewportDebug ? ' viewport-debug-content' : ''}`} data-screen={screen}>
         {screen === 'select' && (
           <ProductGrid
             products={products}

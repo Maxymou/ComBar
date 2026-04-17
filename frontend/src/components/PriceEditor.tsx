@@ -22,7 +22,7 @@ function getPrice(item: Product, isHH: boolean, prices: Record<string, number>):
 
 export default function PriceEditor({ products, prices, isHH, onSetPrice, onResetPrices, onGoBack }: PriceEditorProps) {
   return (
-    <div className="prices-screen">
+    <div className="prices-screen screen-wrapper">
       <div className="prices-scroll">
         {(['drink', 'consigne', 'food'] as const).map(cat => {
           const catItems = products.filter(p => p.category === cat);
