@@ -29,6 +29,15 @@ export interface ViewportMetrics {
   screenHeight: number;
   clientWidth: number;
   clientHeight: number;
+  bodyClientHeight: number;
+  bodyScrollHeight: number;
+  rootClientHeight: number;
+  rootOffsetHeight: number;
+  appShellClientHeight: number;
+  appClientHeight: number;
+  appContentClientHeight: number;
+  screenWrapperClientHeight: number;
+  validateActionsClientHeight: number;
   visualViewportWidth: number | null;
   visualViewportHeight: number | null;
   visualViewportOffsetTop: number | null;
@@ -105,6 +114,15 @@ export function collectMetrics(): ViewportMetrics {
   const vv = typeof window !== 'undefined' ? window.visualViewport : null;
   const doc = typeof document !== 'undefined' ? document.documentElement : null;
   const nav = typeof navigator !== 'undefined' ? navigator : ({} as Navigator);
+  const body = typeof document !== 'undefined' ? document.body : null;
+  const root = typeof document !== 'undefined' ? document.getElementById('root') : null;
+  const appShell = typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.app-shell') : null;
+  const app = typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.app') : null;
+  const appContent = typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.app-content') : null;
+  const screenWrapper =
+    typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.screen-wrapper') : null;
+  const validateActions =
+    typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.validate-actions') : null;
 
   return {
     userAgent: nav.userAgent || '',
@@ -124,6 +142,15 @@ export function collectMetrics(): ViewportMetrics {
     screenHeight: typeof screen !== 'undefined' ? screen.height : 0,
     clientWidth: doc?.clientWidth ?? 0,
     clientHeight: doc?.clientHeight ?? 0,
+    bodyClientHeight: body?.clientHeight ?? 0,
+    bodyScrollHeight: body?.scrollHeight ?? 0,
+    rootClientHeight: root?.clientHeight ?? 0,
+    rootOffsetHeight: root?.offsetHeight ?? 0,
+    appShellClientHeight: appShell?.clientHeight ?? 0,
+    appClientHeight: app?.clientHeight ?? 0,
+    appContentClientHeight: appContent?.clientHeight ?? 0,
+    screenWrapperClientHeight: screenWrapper?.clientHeight ?? 0,
+    validateActionsClientHeight: validateActions?.clientHeight ?? 0,
     visualViewportWidth: vv ? vv.width : null,
     visualViewportHeight: vv ? vv.height : null,
     visualViewportOffsetTop: vv ? vv.offsetTop : null,
@@ -337,6 +364,25 @@ export function installViewportResolver(options: InstallOptions = {}): void {
       vvhVar: metrics.vvhVar,
       safeAreaTop: metrics.safeAreaTop,
       safeAreaBottom: metrics.safeAreaBottom,
+      innerWidth: metrics.innerWidth,
+      outerWidth: metrics.outerWidth,
+      screenWidth: metrics.screenWidth,
+      clientWidth: metrics.clientWidth,
+      bodyClientHeight: metrics.bodyClientHeight,
+      bodyScrollHeight: metrics.bodyScrollHeight,
+      rootClientHeight: metrics.rootClientHeight,
+      rootOffsetHeight: metrics.rootOffsetHeight,
+      appShellClientHeight: metrics.appShellClientHeight,
+      appClientHeight: metrics.appClientHeight,
+      appContentClientHeight: metrics.appContentClientHeight,
+      screenWrapperClientHeight: metrics.screenWrapperClientHeight,
+      validateActionsClientHeight: metrics.validateActionsClientHeight,
+      visualViewportWidth: metrics.visualViewportWidth,
+      visualViewportOffsetTop: metrics.visualViewportOffsetTop,
+      visualViewportOffsetLeft: metrics.visualViewportOffsetLeft,
+      navigatorStandalone: metrics.navigatorStandalone,
+      matchMediaStandalone: metrics.matchMediaStandalone,
+      userAgent: metrics.userAgent,
     });
   };
 

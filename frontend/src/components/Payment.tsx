@@ -20,7 +20,7 @@ export default function Payment({ total, given, isHH, onAddGiven, onRemoveGiven,
   const pieces = DENOMINATIONS.filter(m => m.type === 'piece');
 
   return (
-    <div className="monnaie-screen">
+    <div className="monnaie-screen screen-wrapper">
       <div className="money-row money-row-total">
         <span className="money-row-label">À payer</span>
         <span className="money-row-amount">{total.toFixed(2)} €</span>

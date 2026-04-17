@@ -9,7 +9,17 @@ const debug = isDebugViewportEnabled();
 
 installViewportResolver({ debug });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+if (debug) {
+  document.documentElement.classList.add('viewport-debug');
+  document.body.classList.add('viewport-debug');
+}
+
+const root = document.getElementById('root')!;
+if (debug) {
+  root.classList.add('viewport-debug-root');
+}
+
+ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <App />
     {debug ? <DebugOverlay /> : null}

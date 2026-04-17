@@ -7,7 +7,9 @@
  * the URL, or by setting `localStorage.debugViewport = '1'` in devtools.
  */
 
-export const DEBUG_VIEWPORT: boolean = false;
+export const ENABLE_VIEWPORT_DEBUG = true;
+
+export const DEBUG_VIEWPORT: boolean = ENABLE_VIEWPORT_DEBUG;
 
 export function isDebugViewportEnabled(): boolean {
   if (DEBUG_VIEWPORT) return true;

@@ -24,7 +24,7 @@ export default function ProductGrid({ products, order, isHH, prices, onAdd, onRe
   const totalItems = Object.values(order).reduce((s, v) => s + v, 0);
 
   return (
-    <div className="select-screen">
+    <div className="select-screen screen-wrapper">
       <div className="select-scroll">
         <div className="sec">Boissons</div>
         <div className="grid drinks">
@@ -72,13 +72,15 @@ export default function ProductGrid({ products, order, isHH, prices, onAdd, onRe
         </div>
       </div>
 
-      <button className="btn-validate" disabled={totalItems === 0} onClick={onValidate}>
-        Valider
-        {totalItems > 0 && <span className="validate-count">{totalItems} article{totalItems > 1 ? 's' : ''}</span>}
-      </button>
-      <button className="btn-cancel-order" disabled={totalItems === 0} onClick={onCancel}>
-        Annuler la sélection
-      </button>
+      <div className="validate-actions">
+        <button className="btn-validate" disabled={totalItems === 0} onClick={onValidate}>
+          Valider
+          {totalItems > 0 && <span className="validate-count">{totalItems} article{totalItems > 1 ? 's' : ''}</span>}
+        </button>
+        <button className="btn-cancel-order" disabled={totalItems === 0} onClick={onCancel}>
+          Annuler la sélection
+        </button>
+      </div>
     </div>
   );
 }

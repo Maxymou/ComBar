@@ -29,7 +29,7 @@ function buildRows(metrics: ViewportMetrics, state: ResolverState | null): Row[]
     maxCandidate - metrics.visualViewportHeight > 60;
 
   return [
-    { label: 'UA', value: metrics.userAgent.slice(0, 60) },
+    { label: 'UA', value: metrics.userAgent },
     { label: 'nav.standalone', value: String(metrics.navigatorStandalone) },
     { label: 'mm.standalone', value: String(metrics.matchMediaStandalone) },
     { label: 'isIOSStandalone', value: String(metrics.isIOSStandalone) },
@@ -43,6 +43,19 @@ function buildRows(metrics: ViewportMetrics, state: ResolverState | null): Row[]
       value: `${metrics.clientWidth} x ${metrics.clientHeight}`,
       warn: clientShort,
     },
+    {
+      label: 'body',
+      value: `client:${metrics.bodyClientHeight} scroll:${metrics.bodyScrollHeight}`,
+    },
+    {
+      label: '#root',
+      value: `client:${metrics.rootClientHeight} offset:${metrics.rootOffsetHeight}`,
+    },
+    { label: '.app-shell', value: `${metrics.appShellClientHeight}` },
+    { label: '.app', value: `${metrics.appClientHeight}` },
+    { label: '.app-content', value: `${metrics.appContentClientHeight}` },
+    { label: '.screen-wrapper', value: `${metrics.screenWrapperClientHeight}` },
+    { label: '.validate-actions', value: `${metrics.validateActionsClientHeight}` },
     {
       label: 'vv',
       value: `${fmt(metrics.visualViewportWidth)} x ${fmt(metrics.visualViewportHeight)}`,
@@ -69,6 +82,11 @@ function buildRows(metrics: ViewportMetrics, state: ResolverState | null): Row[]
       value: `${state?.chosenSource ?? 'n/a'} → ${state?.stableHeight ?? 0}px`,
     },
     { label: 'visible', value: `${state?.visibleHeight ?? 0}px` },
+    {
+      label: 'chain-diff',
+      value: `vvh-appShell=${fmt((metrics.visualViewportHeight ?? 0) - metrics.appShellClientHeight)} | appShell-app=${fmt(metrics.appShellClientHeight - metrics.appClientHeight)} | app-appContent=${fmt(metrics.appClientHeight - metrics.appContentClientHeight)}`,
+      warn: (metrics.visualViewportHeight ?? 0) - metrics.appShellClientHeight > 8,
+    },
   ];
 }
 
@@ -94,12 +112,12 @@ export default function DebugOverlay() {
         top: 'env(safe-area-inset-top, 0px)',
         right: 4,
         zIndex: 99999,
-        maxWidth: collapsed ? 64 : 280,
+        maxWidth: collapsed ? 72 : 360,
         maxHeight: collapsed ? 28 : '60vh',
         overflow: 'auto',
         background: 'rgba(0, 0, 0, 0.82)',
         color: '#0f0',
-        font: '10px/1.25 ui-monospace, Menlo, Consolas, monospace',
+        font: '11px/1.3 ui-monospace, Menlo, Consolas, monospace',
         padding: '4px 6px',
         border: '1px solid #0f0',
         borderRadius: 4,
