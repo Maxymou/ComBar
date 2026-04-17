@@ -205,6 +205,8 @@ body::before{
 }
 .sync-indicator.online { border-color: #00E676; }
 .sync-indicator.offline { border-color: #FF3B30; }
+.sync-indicator.pending,
+.sync-indicator.syncing { border-color: #F3B63A; }
 .sync-indicator.clickable { cursor: pointer; }
 .sync-indicator.clickable:active { transform: scale(0.98); }
 .sync-dot {
@@ -215,7 +217,27 @@ body::before{
 }
 .online .sync-dot { background: #00E676; }
 .offline .sync-dot { background: #FF3B30; }
+.pending .sync-dot,
+.syncing .sync-dot { background: #F3B63A; }
 .sync-text { color: #999; white-space: nowrap; }
+.sync-actions-row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.sync-action-btn {
+  border: 1px solid #2e2e2e;
+  background: #0e0e0e;
+  color: #bbb;
+  border-radius: 999px;
+  font-size: 0.55rem;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.sync-action-btn.update {
+  border-color: #4f8cff;
+  color: #b9d1ff;
+}
 
 .connected-devices-popover {
   position: absolute;

@@ -66,6 +66,16 @@ export async function markOrdersSynced(ids: string[]): Promise<void> {
   await tx.done;
 }
 
+export async function recordSyncAttempt(id: string, patch: Partial<PendingOrder>): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction('pendingOrders', 'readwrite');
+  const order = await tx.store.get(id);
+  if (order) {
+    await tx.store.put({ ...order, ...patch });
+  }
+  await tx.done;
+}
+
 export async function deleteSyncedOrders(): Promise<void> {
   const db = await getDb();
   const tx = db.transaction('pendingOrders', 'readwrite');

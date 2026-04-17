@@ -22,8 +22,11 @@ if (pwaEnabled) {
     const updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
-        console.info('[PWA] Update available, applying now');
-        void updateSW(true);
+        console.info('[PWA] Update available');
+        (window as Window & { __combarApplyUpdate?: (() => void) | null }).__combarApplyUpdate = () => {
+          void updateSW(true);
+        };
+        window.dispatchEvent(new CustomEvent('combar:pwa-update-ready'));
       },
       onOfflineReady() {
         console.info('[PWA] Offline cache is ready');

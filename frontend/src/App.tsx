@@ -81,7 +81,7 @@ function persistActionQueue(queue: QueuedRealtimeAction[]): void {
 export default function App() {
   const viewportDebug = isDebugViewportEnabled();
   const { products } = useProducts();
-  const { isOnline, pendingCount, refreshPending } = useOnlineStatus();
+  const { isOnline, pendingCount, syncState, lastSyncAt, refreshPending, forceSync } = useOnlineStatus();
 
   const [isHH, setIsHH] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
@@ -94,6 +94,7 @@ export default function App() {
   const [prices, setPrices] = useState<Record<string, number>>(() => initPrices(products));
   const [confirmFeedback, setConfirmFeedback] = useState(false);
   const [adminPin, setAdminPin] = useState('0000');
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   const actionQueueRef = useRef<QueuedRealtimeAction[]>(readActionQueue());
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -196,6 +197,22 @@ export default function App() {
     persistActionQueue([]);
   }, [isOnline]);
 
+
+  useEffect(() => {
+    const handleUpdateAvailable = () => setUpdateAvailable(true);
+    window.addEventListener('combar:pwa-update-ready', handleUpdateAvailable as EventListener);
+
+    return () => {
+      window.removeEventListener('combar:pwa-update-ready', handleUpdateAvailable as EventListener);
+    };
+  }, []);
+
+  const handleApplyUpdate = useCallback(() => {
+    const apply = (window as Window & { __combarApplyUpdate?: (() => void) | null }).__combarApplyUpdate;
+    if (!apply) return;
+    apply();
+    setUpdateAvailable(false);
+  }, []);
   // Load admin PIN once.
   useEffect(() => {
     getSetting<string>('adminPin').then(pin => {
@@ -254,6 +271,16 @@ export default function App() {
     flushQueuedActions();
   }, [isOnline, applyRealtimeState, flushQueuedActions]);
 
+
+  useEffect(() => {
+    if (!isOnline || !lastSyncAt) return;
+
+    fetchRealtimeState()
+      .then(state => applyRealtimeState(state))
+      .catch(() => {
+        // Keep local state if refresh fails after sync.
+      });
+  }, [applyRealtimeState, isOnline, lastSyncAt]);
   // Realtime stream subscription.
   useEffect(() => {
     if (!isOnline) {
@@ -470,6 +497,7 @@ export default function App() {
       })),
       createdAt: new Date().toISOString(),
       synced: false,
+      retries: 0,
     };
 
     // Save locally first (always)
@@ -536,6 +564,7 @@ export default function App() {
         isHH={isHH}
         isOnline={isOnline}
         pendingCount={pendingCount}
+        syncState={syncState}
         onlineUsers={onlineUsers}
         connectedDevices={connectedDevices}
         recentlyActiveDevices={recentlyActiveDevices}
@@ -543,9 +572,12 @@ export default function App() {
         onRenameTerminal={handleRenameTerminal}
         onToggleHH={toggleHH}
         onNavigatePrices={handleNavigatePrices}
+        onForceSync={forceSync}
+        onApplyUpdate={handleApplyUpdate}
         buildVersion={buildVersion}
         buildTimestamp={buildTimestamp}
         pwaEnabled={pwaEnabled}
+        updateAvailable={updateAvailable}
       />
 
       <main className={`app-content${viewportDebug ? ' viewport-debug-content' : ''}`} data-screen={screen}>
