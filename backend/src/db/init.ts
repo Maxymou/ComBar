@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS order_lines (
   subtotal NUMERIC(10,2) NOT NULL,
   is_bonus BOOLEAN NOT NULL DEFAULT false
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key VARCHAR(100) PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `;
 
 const MIGRATION_SQL = `
@@ -85,6 +91,11 @@ ON CONFLICT (id) DO UPDATE SET
   category_id = EXCLUDED.category_id,
   display_order = EXCLUDED.display_order,
   active = EXCLUDED.active;
+
+
+INSERT INTO app_settings (key, value) VALUES
+  ('realtime_state', '{"prices":{},"happyHour":false}'::jsonb)
+ON CONFLICT (key) DO NOTHING;
 `;
 
 export async function initDatabase(): Promise<void> {

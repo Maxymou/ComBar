@@ -1,4 +1,4 @@
-import { Product, PendingOrder } from '../types';
+import { Product, PendingOrder, RealtimeState } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -6,6 +6,30 @@ export async function fetchProducts(): Promise<Product[]> {
   const res = await fetch(`${API_BASE}/api/products`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+export async function fetchRealtimeState(): Promise<RealtimeState> {
+  const res = await fetch(`${API_BASE}/api/realtime/state`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function updateRealtimePrices(prices: Record<string, number>): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/realtime/prices`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prices }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+export async function updateRealtimeHappyHour(happyHour: boolean): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/realtime/happy-hour`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ happyHour }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
 export async function syncOrders(orders: PendingOrder[]): Promise<{ synced: { index: number; id?: number; error?: string }[] }> {

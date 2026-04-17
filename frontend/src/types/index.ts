@@ -40,3 +40,9 @@ export interface Denomination {
   value: number;
   type: 'billet' | 'piece';
 }
+
+export interface RealtimeState {
+  prices: Record<string, number>;
+  happyHour: boolean;
+  clients: number;
+}

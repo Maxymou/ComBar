@@ -155,6 +155,8 @@ body::before{
 }
 .header-left { display: flex; align-items: center; }
 .header-right { display: flex; align-items: center; gap: 8px; }
+.header-status-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.online-users { font-size: 0.58rem; color: #888; letter-spacing: 0.4px; }
 .header-logo {
   height: 36px;
   width: auto;
