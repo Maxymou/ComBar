@@ -6,12 +6,12 @@ import ordersRouter from './routes/orders';
 import { initDatabase } from './db/init';
 import pool from './db/pool';
 import {
-  ConnectedDevice,
   RealtimeState,
   loadRealtimeState,
   persistRealtimeState,
   sanitizeState,
 } from './realtime/state';
+import { PresenceRegistry, sanitizeIdentity } from './realtime/presence';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -23,22 +23,20 @@ app.use(healthRouter);
 app.use(productsRouter);
 app.use(ordersRouter);
 
+const presenceRegistry = new PresenceRegistry();
+
 let realtimeState: RealtimeState = {
   prices: {},
   happyHour: false,
   clients: 0,
   clientsCount: 0,
   connectedDevices: [],
+  presence: {
+    connectedCount: 0,
+    connected: [],
+    recentlyActive: [],
+  },
 };
-
-interface SseClient {
-  response: Response;
-  deviceId: string;
-  deviceName: string;
-  connectedAt: string;
-}
-
-const sseClientsByDevice = new Map<string, SseClient>();
 
 function writeSse(res: Response, event: string, data: unknown): void {
   res.write(`event: ${event}\n`);
@@ -46,80 +44,84 @@ function writeSse(res: Response, event: string, data: unknown): void {
 }
 
 function broadcast(event: string, data: unknown): void {
-  for (const client of sseClientsByDevice.values()) {
-    writeSse(client.response, event, data);
-  }
+  presenceRegistry.forEachConnectedResponse(response => {
+    writeSse(response, event, data);
+  });
+}
+
+function rebuildPresenceState(): void {
+  const snapshot = presenceRegistry.snapshot();
+  realtimeState = {
+    ...realtimeState,
+    clients: snapshot.connectedCount,
+    clientsCount: snapshot.connectedCount,
+    connectedDevices: snapshot.connected,
+    presence: snapshot,
+  };
 }
 
 function broadcastState(): void {
+  rebuildPresenceState();
   broadcast('state', realtimeState);
 }
 
 function broadcastClients(): void {
+  rebuildPresenceState();
   broadcast('clients', realtimeState.clientsCount);
 }
 
-function getConnectedDevicesSnapshot(): ConnectedDevice[] {
-  return Array.from(sseClientsByDevice.values()).map(client => ({
-    deviceId: client.deviceId,
-    deviceName: client.deviceName,
-    connectedAt: client.connectedAt,
-  }));
-}
-
-function refreshConnectedClientsState(): void {
-  const connectedDevices = getConnectedDevicesSnapshot();
-  const clientsCount = connectedDevices.length;
-  realtimeState = {
-    ...realtimeState,
-    clients: clientsCount,
-    clientsCount,
-    connectedDevices,
-  };
-}
-
 app.get('/api/realtime/state', (_req: Request, res: Response) => {
+  rebuildPresenceState();
   res.json(realtimeState);
 });
 
+app.post('/api/realtime/presence/heartbeat', (req: Request, res: Response) => {
+  const identity = sanitizeIdentity(String(req.body?.deviceId || ''), String(req.body?.deviceName || ''));
+  presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
+  rebuildPresenceState();
+  res.status(200).json({ ok: true });
+});
+
+app.post('/api/realtime/presence/rename', (req: Request, res: Response) => {
+  const identity = sanitizeIdentity(String(req.body?.deviceId || ''), String(req.body?.deviceName || ''));
+  presenceRegistry.renameDevice(identity.deviceId, identity.deviceName);
+  presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
+  broadcastState();
+  broadcastClients();
+  res.status(200).json({ ok: true, deviceName: identity.deviceName });
+});
+
 app.get('/api/realtime/stream', (req: Request, res: Response) => {
-  const rawDeviceId = String(req.query.deviceId || '').trim();
-  const rawDeviceName = String(req.query.deviceName || '').trim();
-  const deviceId = rawDeviceId || `anon-${crypto.randomUUID()}`;
-  const deviceName = rawDeviceName || `Terminal ${deviceId.slice(-4).toUpperCase()}`;
+  const identity = sanitizeIdentity(String(req.query.deviceId || ''), String(req.query.deviceName || ''));
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  const existingClient = sseClientsByDevice.get(deviceId);
-  if (existingClient) {
-    existingClient.response.end();
-    sseClientsByDevice.delete(deviceId);
-  }
-
-  sseClientsByDevice.set(deviceId, {
+  presenceRegistry.registerConnection({
     response: res,
-    deviceId,
-    deviceName,
-    connectedAt: new Date().toISOString(),
+    deviceId: identity.deviceId,
+    deviceName: identity.deviceName,
   });
-  refreshConnectedClientsState();
+  presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
+
+  rebuildPresenceState();
   writeSse(res, 'state', realtimeState);
+  broadcastState();
   broadcastClients();
 
   const keepAlive = setInterval(() => {
     res.write(': keepalive\n\n');
+    presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
+    rebuildPresenceState();
   }, 20000);
 
   res.on('close', () => {
     clearInterval(keepAlive);
-    const currentClient = sseClientsByDevice.get(deviceId);
-    if (currentClient?.response === res) {
-      sseClientsByDevice.delete(deviceId);
-    }
-    refreshConnectedClientsState();
+    presenceRegistry.disconnect(identity.deviceId, res);
+    rebuildPresenceState();
+    broadcastState();
     broadcastClients();
   });
 });
@@ -184,7 +186,19 @@ async function start(): Promise<void> {
       clients: 0,
       clientsCount: 0,
       connectedDevices: [],
+      presence: {
+        connectedCount: 0,
+        connected: [],
+        recentlyActive: [],
+      },
     };
+
+    setInterval(() => {
+      presenceRegistry.cleanupExpired();
+      rebuildPresenceState();
+      broadcastState();
+      broadcastClients();
+    }, 15000);
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`[Server] Running on port ${PORT}`);

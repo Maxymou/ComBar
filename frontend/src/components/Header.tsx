@@ -1,17 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
-import { ConnectedDevice } from '../types';
+import { PresenceDevice } from '../types';
 
 interface HeaderProps {
   isHH: boolean;
   isOnline: boolean;
   pendingCount: number;
   onlineUsers: number;
-  connectedDevices: ConnectedDevice[];
+  connectedDevices: PresenceDevice[];
+  recentlyActiveDevices: PresenceDevice[];
+  localDeviceName: string;
+  onRenameTerminal: (nextName: string) => Promise<void>;
   buildVersion: string;
   buildTimestamp: string;
   pwaEnabled: boolean;
   onToggleHH: () => void;
   onNavigatePrices: () => void;
+}
+
+function formatLastSeen(isoDate: string): string {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return 'dernière activité inconnue';
+  }
+
+  const now = Date.now();
+  const diffSeconds = Math.floor((now - date.getTime()) / 1000);
+  if (diffSeconds < 60) return 'à l’instant';
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `il y a ${diffMinutes} min`;
+  }
+
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function Header({
@@ -20,6 +41,9 @@ export default function Header({
   pendingCount,
   onlineUsers,
   connectedDevices,
+  recentlyActiveDevices,
+  localDeviceName,
+  onRenameTerminal,
   buildVersion,
   buildTimestamp,
   pwaEnabled,
@@ -27,7 +51,13 @@ export default function Header({
   onNavigatePrices,
 }: HeaderProps) {
   const [isDevicesPopoverOpen, setIsDevicesPopoverOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState(localDeviceName);
+  const [isRenaming, setIsRenaming] = useState(false);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setRenameDraft(localDeviceName);
+  }, [localDeviceName]);
 
   useEffect(() => {
     if (!isDevicesPopoverOpen) return;
@@ -47,10 +77,15 @@ export default function Header({
   }, [isDevicesPopoverOpen]);
 
   const canOpenDevicesPopover = isOnline;
-  const formatConnectedAt = (isoDate: string): string => {
-    const date = new Date(isoDate);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const handleRename = async () => {
+    if (isRenaming) return;
+    setIsRenaming(true);
+    try {
+      await onRenameTerminal(renameDraft);
+    } finally {
+      setIsRenaming(false);
+    }
   };
 
   return (
@@ -93,7 +128,24 @@ export default function Header({
             </div>
             {isDevicesPopoverOpen && (
               <div className="connected-devices-popover" role="dialog" aria-label="Terminaux connectés">
-                <div className="connected-devices-title">Terminaux connectés</div>
+                <div className="connected-devices-title">Terminaux</div>
+                <div className="connected-devices-summary">{onlineUsers} connectés</div>
+
+                <div className="terminal-rename-row">
+                  <input
+                    className="terminal-rename-input"
+                    value={renameDraft}
+                    maxLength={12}
+                    onChange={event => setRenameDraft(event.target.value)}
+                    placeholder="Nom du terminal"
+                    aria-label="Nom du terminal"
+                  />
+                  <button className="terminal-rename-btn" onClick={handleRename} disabled={isRenaming} type="button">
+                    {isRenaming ? '...' : 'Renommer'}
+                  </button>
+                </div>
+
+                <div className="devices-section-title">Connectés</div>
                 {connectedDevices.length > 0 ? (
                   <ul className="connected-devices-list">
                     {connectedDevices.map(device => (
@@ -102,14 +154,27 @@ export default function Header({
                           <span className="connected-device-name">{device.deviceName || 'Terminal'}</span>
                           <span className="connected-device-status">en ligne</span>
                         </span>
-                        {device.connectedAt && (
-                          <span className="connected-device-time">{formatConnectedAt(device.connectedAt)}</span>
-                        )}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="connected-devices-fallback">{onlineUsers} terminaux connectés</div>
+                  <div className="connected-devices-fallback">Aucun terminal connecté</div>
+                )}
+
+                <div className="devices-section-title">Actifs récemment</div>
+                {recentlyActiveDevices.length > 0 ? (
+                  <ul className="connected-devices-list">
+                    {recentlyActiveDevices.map(device => (
+                      <li className="connected-device-row" key={device.deviceId}>
+                        <span className="connected-device-main">
+                          <span className="connected-device-name">{device.deviceName || 'Terminal'}</span>
+                          <span className="connected-device-time">{formatLastSeen(device.lastSeenAt)}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="connected-devices-fallback">Aucune activité récente</div>
                 )}
               </div>
             )}

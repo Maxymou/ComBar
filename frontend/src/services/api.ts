@@ -84,3 +84,23 @@ export async function submitOrder(order: PendingOrder): Promise<{ id: number }> 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+
+
+export async function sendPresenceHeartbeat(deviceId: string, deviceName: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/realtime/presence/heartbeat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId, deviceName }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+export async function renameTerminal(deviceId: string, deviceName: string): Promise<{ ok: true; deviceName: string }> {
+  const res = await fetch(`${API_BASE}/api/realtime/presence/rename`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId, deviceName }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}

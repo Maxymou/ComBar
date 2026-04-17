@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Screen, OrderLine, PendingOrder, Product, RealtimeState, ConnectedDevice } from './types';
+import { Screen, OrderLine, PendingOrder, Product, RealtimeState, PresenceDevice } from './types';
 import { useProducts } from './hooks/useProducts';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { savePendingOrder, getSetting, markOrdersSynced } from './services/db';
@@ -8,6 +8,8 @@ import {
   updateRealtimeHappyHour,
   updateRealtimePrices,
   fetchRealtimeState,
+  renameTerminal,
+  sendPresenceHeartbeat,
 } from './services/api';
 import { DENOMINATIONS } from './data/denominations';
 import Header from './components/Header';
@@ -16,18 +18,16 @@ import Summary from './components/Summary';
 import Payment from './components/Payment';
 import PriceEditor from './components/PriceEditor';
 import { isDebugViewportEnabled } from './debug';
+import { useDeviceIdentity } from './hooks/useDeviceIdentity';
 import './App.css';
 
 const REALTIME_STATE_KEY = 'combar.realtime.state';
 const REALTIME_QUEUE_KEY = 'combar.realtime.queue';
-const DEVICE_ID_KEY = 'combar.device.id';
-const DEVICE_NAME_KEY = 'combar.device.name';
 
 interface QueuedRealtimeAction {
   type: 'updatePrices' | 'toggleHappyHour';
   payload: Record<string, number> | boolean;
 }
-
 function initPrices(products: Product[]): Record<string, number> {
   const p: Record<string, number> = {};
   products.forEach(i => {
@@ -78,23 +78,6 @@ function persistActionQueue(queue: QueuedRealtimeAction[]): void {
   localStorage.setItem(REALTIME_QUEUE_KEY, JSON.stringify(queue));
 }
 
-function getOrCreateDeviceIdentity(): { deviceId: string; deviceName: string } {
-  const existingDeviceId = localStorage.getItem(DEVICE_ID_KEY);
-  const existingDeviceName = localStorage.getItem(DEVICE_NAME_KEY);
-
-  if (existingDeviceId && existingDeviceName) {
-    return { deviceId: existingDeviceId, deviceName: existingDeviceName };
-  }
-
-  const generatedDeviceId = existingDeviceId || crypto.randomUUID();
-  const generatedDeviceName = existingDeviceName || `Terminal ${generatedDeviceId.slice(-4).toUpperCase()}`;
-
-  localStorage.setItem(DEVICE_ID_KEY, generatedDeviceId);
-  localStorage.setItem(DEVICE_NAME_KEY, generatedDeviceName);
-
-  return { deviceId: generatedDeviceId, deviceName: generatedDeviceName };
-}
-
 export default function App() {
   const viewportDebug = isDebugViewportEnabled();
   const { products } = useProducts();
@@ -102,7 +85,8 @@ export default function App() {
 
   const [isHH, setIsHH] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
-  const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
+  const [connectedDevices, setConnectedDevices] = useState<PresenceDevice[]>([]);
+  const [recentlyActiveDevices, setRecentlyActiveDevices] = useState<PresenceDevice[]>([]);
   const [order, setOrder] = useState<Record<string, number>>({});
   const [screen, setScreen] = useState<Screen>('select');
   const [checked, setChecked] = useState<Record<string, number>>({});
@@ -113,7 +97,8 @@ export default function App() {
 
   const actionQueueRef = useRef<QueuedRealtimeAction[]>(readActionQueue());
   const eventSourceRef = useRef<EventSource | null>(null);
-  const deviceIdentityRef = useRef(getOrCreateDeviceIdentity());
+  const heartbeatTimerRef = useRef<number | null>(null);
+  const { identity, updateDeviceName } = useDeviceIdentity();
 
   const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
   const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP || 'unknown';
@@ -157,7 +142,17 @@ export default function App() {
       setOnlineUsers(nextClientsCount);
     }
 
-    if (Array.isArray(newState.connectedDevices)) {
+    if (newState.presence) {
+      if (Array.isArray(newState.presence.connected)) {
+        setConnectedDevices(newState.presence.connected);
+      }
+      if (Array.isArray(newState.presence.recentlyActive)) {
+        setRecentlyActiveDevices(newState.presence.recentlyActive);
+      }
+      if (typeof newState.presence.connectedCount === 'number') {
+        setOnlineUsers(newState.presence.connectedCount);
+      }
+    } else if (Array.isArray(newState.connectedDevices)) {
       setConnectedDevices(newState.connectedDevices);
     }
 
@@ -228,6 +223,7 @@ export default function App() {
                 : 0;
           setOnlineUsers(cachedClientsCount);
           setConnectedDevices(Array.isArray(cachedState.connectedDevices) ? cachedState.connectedDevices : []);
+          setRecentlyActiveDevices(Array.isArray(cachedState.presence?.recentlyActive) ? cachedState.presence.recentlyActive : []);
         }
         return;
       }
@@ -263,12 +259,16 @@ export default function App() {
     if (!isOnline) {
       eventSourceRef.current?.close();
       eventSourceRef.current = null;
+      if (heartbeatTimerRef.current) {
+        window.clearInterval(heartbeatTimerRef.current);
+        heartbeatTimerRef.current = null;
+      }
       return;
     }
 
     const streamParams = new URLSearchParams({
-      deviceId: deviceIdentityRef.current.deviceId,
-      deviceName: deviceIdentityRef.current.deviceName,
+      deviceId: identity.deviceId,
+      deviceName: identity.deviceName,
     });
     const source = new EventSource(`/api/realtime/stream?${streamParams.toString()}`);
     eventSourceRef.current = source;
@@ -292,15 +292,25 @@ export default function App() {
     source.addEventListener('state', onState as EventListener);
     source.addEventListener('clients', onClients as EventListener);
 
+    const sendHeartbeat = () => {
+      void sendPresenceHeartbeat(identity.deviceId, identity.deviceName).catch(() => undefined);
+    };
+    sendHeartbeat();
+    heartbeatTimerRef.current = window.setInterval(sendHeartbeat, 25000);
+
     return () => {
       source.removeEventListener('state', onState as EventListener);
       source.removeEventListener('clients', onClients as EventListener);
       source.close();
+      if (heartbeatTimerRef.current) {
+        window.clearInterval(heartbeatTimerRef.current);
+        heartbeatTimerRef.current = null;
+      }
       if (eventSourceRef.current === source) {
         eventSourceRef.current = null;
       }
     };
-  }, [applyRealtimeState, isOnline]);
+  }, [applyRealtimeState, identity.deviceId, identity.deviceName, isOnline]);
 
   const sendOrQueuePricesUpdate = useCallback(async (nextPrices: Record<string, number>) => {
     persistRealtimeState({
@@ -485,6 +495,27 @@ export default function App() {
     }, 1500);
   }, [given, total, isHH, lines, refreshPending, reset]);
 
+  const handleRenameTerminal = useCallback(async (nextName: string) => {
+    const nextIdentity = updateDeviceName(nextName);
+
+    setConnectedDevices(prev => prev.map(device => (
+      device.deviceId === nextIdentity.deviceId
+        ? { ...device, deviceName: nextIdentity.deviceName }
+        : device
+    )));
+
+    if (!isOnline) return;
+
+    try {
+      await renameTerminal(nextIdentity.deviceId, nextIdentity.deviceName);
+      await sendPresenceHeartbeat(nextIdentity.deviceId, nextIdentity.deviceName);
+      const latestState = await fetchRealtimeState();
+      applyRealtimeState(latestState);
+    } catch {
+      // Local rename stays persisted; server sync will catch up later.
+    }
+  }, [applyRealtimeState, isOnline, updateDeviceName]);
+
   if (confirmFeedback) {
     return (
       <div className={`app-shell${isHH ? ' hh' : ''}${viewportDebug ? ' viewport-debug-shell' : ''}`}>
@@ -507,6 +538,9 @@ export default function App() {
         pendingCount={pendingCount}
         onlineUsers={onlineUsers}
         connectedDevices={connectedDevices}
+        recentlyActiveDevices={recentlyActiveDevices}
+        localDeviceName={identity.deviceName}
+        onRenameTerminal={handleRenameTerminal}
         onToggleHH={toggleHH}
         onNavigatePrices={handleNavigatePrices}
         buildVersion={buildVersion}
