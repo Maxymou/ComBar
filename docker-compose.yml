@@ -41,7 +41,7 @@ services:
       no_cache: true
       args:
         VITE_API_URL: ""
-        VITE_ENABLE_PWA: "false"
+        VITE_ENABLE_PWA: "true"
         VITE_APP_VERSION: ${APP_VERSION:-1.0.0}
         CACHE_BUST: ${CACHE_BUST:-1}
     restart: unless-stopped

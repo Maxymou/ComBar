@@ -102,6 +102,7 @@ Copier `.env.example` en `.env` pour personnaliser :
 | `DB_USER` | `combar` | Utilisateur PostgreSQL |
 | `DB_PASSWORD` | `combar` | Mot de passe PostgreSQL |
 | `APP_PORT` | `8080` | Port d'accès à l'application |
+| `VITE_ENABLE_PWA` | `true` | Active le Service Worker et l'installabilité PWA du frontend |
 
 ## Ports exposés
 

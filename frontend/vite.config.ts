@@ -4,7 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const pwaEnabled = env.VITE_ENABLE_PWA === 'true';
+  const pwaEnv = env.VITE_ENABLE_PWA;
+  const pwaEnabled = pwaEnv ? pwaEnv === 'true' : mode === 'production';
 
   return {
     plugins: [

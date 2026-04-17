@@ -43,6 +43,10 @@ export default function App() {
 
   const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
   const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP || 'unknown';
+  const pwaEnabled =
+    import.meta.env.VITE_ENABLE_PWA === undefined
+      ? import.meta.env.PROD
+      : import.meta.env.VITE_ENABLE_PWA === 'true';
 
   // Load saved PIN and prices on mount / products change
   useEffect(() => {
@@ -220,6 +224,7 @@ export default function App() {
         onNavigatePrices={handleNavigatePrices}
         buildVersion={buildVersion}
         buildTimestamp={buildTimestamp}
+        pwaEnabled={pwaEnabled}
       />
 
       <main className={`app-content${viewportDebug ? ' viewport-debug-content' : ''}`} data-screen={screen}>
