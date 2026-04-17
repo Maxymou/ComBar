@@ -5,12 +5,16 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { savePendingOrder, getSetting, markOrdersSynced } from './services/db';
 import {
   submitOrder,
-  updateRealtimeHappyHour,
-  updateRealtimePrices,
   fetchRealtimeState,
   renameTerminal,
   sendPresenceHeartbeat,
 } from './services/api';
+import {
+  connectRealtimeStream,
+  enqueueRealtimeChange,
+  flushQueuedRealtimeChanges,
+  shouldApplyIncomingState,
+} from './services/sync';
 import { DENOMINATIONS } from './data/denominations';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
@@ -23,12 +27,6 @@ import { useDeviceIdentity } from './hooks/useDeviceIdentity';
 import './App.css';
 
 const REALTIME_STATE_KEY = 'combar.realtime.state';
-const REALTIME_QUEUE_KEY = 'combar.realtime.queue';
-
-interface QueuedRealtimeAction {
-  type: 'updatePrices' | 'toggleHappyHour';
-  payload: Record<string, number> | boolean;
-}
 function initPrices(products: Product[]): Record<string, number> {
   const p: Record<string, number> = {};
   products.forEach(i => {
@@ -59,26 +57,6 @@ function persistRealtimeState(state: Partial<RealtimeState>): void {
   localStorage.setItem(REALTIME_STATE_KEY, JSON.stringify(state));
 }
 
-function readActionQueue(): QueuedRealtimeAction[] {
-  try {
-    const raw = localStorage.getItem(REALTIME_QUEUE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (action): action is QueuedRealtimeAction =>
-        action &&
-        (action.type === 'updatePrices' || action.type === 'toggleHappyHour')
-    );
-  } catch {
-    return [];
-  }
-}
-
-function persistActionQueue(queue: QueuedRealtimeAction[]): void {
-  localStorage.setItem(REALTIME_QUEUE_KEY, JSON.stringify(queue));
-}
-
 export default function App() {
   const viewportDebug = isDebugViewportEnabled();
   const { products } = useProducts();
@@ -99,9 +77,8 @@ export default function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [view, setView] = useState<View>('order');
 
-  const actionQueueRef = useRef<QueuedRealtimeAction[]>(readActionQueue());
-  const eventSourceRef = useRef<EventSource | null>(null);
   const heartbeatTimerRef = useRef<number | null>(null);
+  const lastAppliedStateRef = useRef<Partial<RealtimeState> | null>(readCachedRealtimeState());
   const { identity, updateDeviceName } = useDeviceIdentity();
 
   const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
@@ -119,6 +96,10 @@ export default function App() {
   }, []);
 
   const applyRealtimeState = useCallback((newState: Partial<RealtimeState>) => {
+    if (!shouldApplyIncomingState(lastAppliedStateRef.current, newState)) {
+      return;
+    }
+
     if (newState.prices && typeof newState.prices === 'object') {
       setPrices(prev => ({ ...prev, ...newState.prices }));
     }
@@ -160,45 +141,12 @@ export default function App() {
       setConnectedDevices(newState.connectedDevices);
     }
 
-    persistRealtimeState(newState);
+    lastAppliedStateRef.current = {
+      ...lastAppliedStateRef.current,
+      ...newState,
+    };
+    persistRealtimeState(lastAppliedStateRef.current);
   }, []);
-
-  const enqueueAction = useCallback((action: QueuedRealtimeAction) => {
-    const queue = actionQueueRef.current;
-
-    if (action.type === 'updatePrices') {
-      const next = queue.filter(item => item.type !== 'updatePrices');
-      next.push(action);
-      actionQueueRef.current = next;
-      persistActionQueue(next);
-      return;
-    }
-
-    const next = [...queue, action];
-    actionQueueRef.current = next;
-    persistActionQueue(next);
-  }, []);
-
-  const flushQueuedActions = useCallback(async () => {
-    if (!isOnline || actionQueueRef.current.length === 0) return;
-
-    const queue = [...actionQueueRef.current];
-
-    for (const action of queue) {
-      try {
-        if (action.type === 'updatePrices') {
-          await updateRealtimePrices(action.payload as Record<string, number>);
-        } else {
-          await updateRealtimeHappyHour(Boolean(action.payload));
-        }
-      } catch {
-        return;
-      }
-    }
-
-    actionQueueRef.current = [];
-    persistActionQueue([]);
-  }, [isOnline]);
 
 
   useEffect(() => {
@@ -271,8 +219,8 @@ export default function App() {
         // Keep local cached state if fetch fails.
       });
 
-    flushQueuedActions();
-  }, [isOnline, applyRealtimeState, flushQueuedActions]);
+    void flushQueuedRealtimeChanges();
+  }, [isOnline, applyRealtimeState]);
 
 
   useEffect(() => {
@@ -284,43 +232,30 @@ export default function App() {
         // Keep local state if refresh fails after sync.
       });
   }, [applyRealtimeState, isOnline, lastSyncAt]);
-  // Realtime stream subscription.
+  // Realtime stream subscription with reconnect and presence updates.
   useEffect(() => {
     if (!isOnline) {
-      eventSourceRef.current?.close();
-      eventSourceRef.current = null;
       if (heartbeatTimerRef.current) {
         window.clearInterval(heartbeatTimerRef.current);
         heartbeatTimerRef.current = null;
       }
       return;
     }
-
-    const streamParams = new URLSearchParams({
-      deviceId: identity.deviceId,
-      deviceName: identity.deviceName,
+    const disconnect = connectRealtimeStream(identity, {
+      onStateUpdate: applyRealtimeState,
+      onPresenceUpdate: devices => {
+        applyRealtimeState({
+          connectedDevices: devices,
+          clients: devices.length,
+          clientsCount: devices.length,
+          presence: {
+            connectedCount: devices.length,
+            connected: devices,
+            recentlyActive: [],
+          },
+        });
+      },
     });
-    const source = new EventSource(`/api/realtime/stream?${streamParams.toString()}`);
-    eventSourceRef.current = source;
-
-    const onState = (event: MessageEvent<string>) => {
-      try {
-        const parsed = JSON.parse(event.data) as Partial<RealtimeState>;
-        applyRealtimeState(parsed);
-      } catch {
-        // Ignore malformed state payload
-      }
-    };
-
-    const onClients = (event: MessageEvent<string>) => {
-      const count = Number(event.data);
-      if (!Number.isNaN(count)) {
-        applyRealtimeState({ clients: count, clientsCount: count });
-      }
-    };
-
-    source.addEventListener('state', onState as EventListener);
-    source.addEventListener('clients', onClients as EventListener);
 
     const sendHeartbeat = () => {
       void sendPresenceHeartbeat(identity.deviceId, identity.deviceName).catch(() => undefined);
@@ -329,15 +264,10 @@ export default function App() {
     heartbeatTimerRef.current = window.setInterval(sendHeartbeat, 25000);
 
     return () => {
-      source.removeEventListener('state', onState as EventListener);
-      source.removeEventListener('clients', onClients as EventListener);
-      source.close();
+      disconnect();
       if (heartbeatTimerRef.current) {
         window.clearInterval(heartbeatTimerRef.current);
         heartbeatTimerRef.current = null;
-      }
-      if (eventSourceRef.current === source) {
-        eventSourceRef.current = null;
       }
     };
   }, [applyRealtimeState, identity.deviceId, identity.deviceName, isOnline]);
@@ -353,15 +283,16 @@ export default function App() {
 
     if (isOnline) {
       try {
-        await updateRealtimePrices(nextPrices);
+        enqueueRealtimeChange({ type: 'updatePrices', payload: nextPrices });
+        await flushQueuedRealtimeChanges();
         return;
       } catch {
         // Falls through to queue mode
       }
     }
 
-    enqueueAction({ type: 'updatePrices', payload: nextPrices });
-  }, [connectedDevices, enqueueAction, isHH, isOnline, onlineUsers]);
+    enqueueRealtimeChange({ type: 'updatePrices', payload: nextPrices });
+  }, [connectedDevices, isHH, isOnline, onlineUsers]);
 
   const sendOrQueueHappyHourUpdate = useCallback(async (nextHappyHour: boolean) => {
     persistRealtimeState({
@@ -374,15 +305,16 @@ export default function App() {
 
     if (isOnline) {
       try {
-        await updateRealtimeHappyHour(nextHappyHour);
+        enqueueRealtimeChange({ type: 'toggleHappyHour', payload: nextHappyHour });
+        await flushQueuedRealtimeChanges();
         return;
       } catch {
         // Falls through to queue mode
       }
     }
 
-    enqueueAction({ type: 'toggleHappyHour', payload: nextHappyHour });
-  }, [connectedDevices, enqueueAction, isOnline, onlineUsers, prices]);
+    enqueueRealtimeChange({ type: 'toggleHappyHour', payload: nextHappyHour });
+  }, [connectedDevices, isOnline, onlineUsers, prices]);
 
   const add = (id: string) => setOrder(p => ({ ...p, [id]: (p[id] || 0) + 1 }));
   const remove = (id: string) => setOrder(p => {

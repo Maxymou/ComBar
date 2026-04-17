@@ -12,6 +12,7 @@ import {
   sanitizeState,
 } from './realtime/state';
 import { PresenceRegistry, sanitizeIdentity } from './realtime/presence';
+import { RealtimeServer } from './realtime/server';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -19,11 +20,8 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
-app.use(healthRouter);
-app.use(productsRouter);
-app.use(ordersRouter);
-
 const presenceRegistry = new PresenceRegistry();
+const realtimeServer = new RealtimeServer();
 
 let realtimeState: RealtimeState = {
   prices: {},
@@ -36,22 +34,19 @@ let realtimeState: RealtimeState = {
     connected: [],
     recentlyActive: [],
   },
+  version: 0,
+  updatedAt: new Date().toISOString(),
 };
 
-function writeSse(res: Response, event: string, data: unknown): void {
-  res.write(`event: ${event}\n`);
-  res.write(`data: ${JSON.stringify(data)}\n\n`);
-}
+app.locals.realtimeServer = realtimeServer;
 
-function broadcast(event: string, data: unknown): void {
-  presenceRegistry.forEachConnectedResponse(response => {
-    writeSse(response, event, data);
-  });
-}
+app.use(healthRouter);
+app.use(productsRouter);
+app.use(ordersRouter);
 
-function rebuildPresenceState(): void {
+function buildPresenceState(): RealtimeState {
   const snapshot = presenceRegistry.snapshot();
-  realtimeState = {
+  return {
     ...realtimeState,
     clients: snapshot.connectedCount,
     clientsCount: snapshot.connectedCount,
@@ -60,25 +55,43 @@ function rebuildPresenceState(): void {
   };
 }
 
-function broadcastState(): void {
-  rebuildPresenceState();
-  broadcast('state', realtimeState);
+function publishStateUpdate(): void {
+  realtimeState = buildPresenceState();
+  realtimeServer.broadcastState(realtimeState);
 }
 
-function broadcastClients(): void {
-  rebuildPresenceState();
-  broadcast('clients', realtimeState.clientsCount);
+function publishPresenceUpdate(): void {
+  const snapshot = presenceRegistry.snapshot();
+  realtimeState = {
+    ...realtimeState,
+    clients: snapshot.connectedCount,
+    clientsCount: snapshot.connectedCount,
+    connectedDevices: snapshot.connected,
+    presence: snapshot,
+  };
+  realtimeServer.broadcastPresence(snapshot.connected);
+}
+
+function nextStateVersion(): number {
+  return (realtimeState.version || 0) + 1;
+}
+
+function touchStateMetadata(): Pick<RealtimeState, 'version' | 'updatedAt'> {
+  return {
+    version: nextStateVersion(),
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 app.get('/api/realtime/state', (_req: Request, res: Response) => {
-  rebuildPresenceState();
+  realtimeState = buildPresenceState();
   res.json(realtimeState);
 });
 
 app.post('/api/realtime/presence/heartbeat', (req: Request, res: Response) => {
   const identity = sanitizeIdentity(String(req.body?.deviceId || ''), String(req.body?.deviceName || ''));
   presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
-  rebuildPresenceState();
+  publishPresenceUpdate();
   res.status(200).json({ ok: true });
 });
 
@@ -86,8 +99,8 @@ app.post('/api/realtime/presence/rename', (req: Request, res: Response) => {
   const identity = sanitizeIdentity(String(req.body?.deviceId || ''), String(req.body?.deviceName || ''));
   presenceRegistry.renameDevice(identity.deviceId, identity.deviceName);
   presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
-  broadcastState();
-  broadcastClients();
+  publishStateUpdate();
+  publishPresenceUpdate();
   res.status(200).json({ ok: true, deviceName: identity.deviceName });
 });
 
@@ -99,6 +112,7 @@ app.get('/api/realtime/stream', (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
+  realtimeServer.connect(res);
   presenceRegistry.registerConnection({
     response: res,
     deviceId: identity.deviceId,
@@ -106,23 +120,22 @@ app.get('/api/realtime/stream', (req: Request, res: Response) => {
   });
   presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
 
-  rebuildPresenceState();
-  writeSse(res, 'state', realtimeState);
-  broadcastState();
-  broadcastClients();
+  realtimeState = buildPresenceState();
+  realtimeServer.sendInitialState(res, realtimeState);
+  publishPresenceUpdate();
 
   const keepAlive = setInterval(() => {
     res.write(': keepalive\n\n');
     presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
-    rebuildPresenceState();
+    realtimeState = buildPresenceState();
   }, 20000);
 
   res.on('close', () => {
     clearInterval(keepAlive);
+    realtimeServer.disconnect(res);
     presenceRegistry.disconnect(identity.deviceId, res);
-    rebuildPresenceState();
-    broadcastState();
-    broadcastClients();
+    publishStateUpdate();
+    publishPresenceUpdate();
   });
 });
 
@@ -131,9 +144,10 @@ app.post('/api/realtime/prices', async (req: Request, res: Response) => {
   realtimeState = {
     ...realtimeState,
     prices: nextState.prices,
+    ...touchStateMetadata(),
   };
 
-  broadcastState();
+  publishStateUpdate();
 
   try {
     await persistRealtimeState(realtimeState);
@@ -148,9 +162,10 @@ app.post('/api/realtime/happy-hour', async (req: Request, res: Response) => {
   realtimeState = {
     ...realtimeState,
     happyHour: Boolean(req.body?.happyHour),
+    ...touchStateMetadata(),
   };
 
-  broadcastState();
+  publishStateUpdate();
 
   try {
     await persistRealtimeState(realtimeState);
@@ -195,9 +210,8 @@ async function start(): Promise<void> {
 
     setInterval(() => {
       presenceRegistry.cleanupExpired();
-      rebuildPresenceState();
-      broadcastState();
-      broadcastClients();
+      realtimeState = buildPresenceState();
+      publishPresenceUpdate();
     }, 15000);
 
     app.listen(PORT, '0.0.0.0', () => {

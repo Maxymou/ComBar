@@ -66,4 +66,6 @@ export interface RealtimeState {
   clientsCount: number;
   connectedDevices: PresenceDevice[];
   presence: RealtimePresenceSnapshot;
+  version: number;
+  updatedAt: string;
 }
