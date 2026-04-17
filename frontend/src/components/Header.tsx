@@ -2,6 +2,7 @@ interface HeaderProps {
   isHH: boolean;
   isOnline: boolean;
   pendingCount: number;
+  onlineUsers: number;
   buildVersion: string;
   buildTimestamp: string;
   pwaEnabled: boolean;
@@ -13,6 +14,7 @@ export default function Header({
   isHH,
   isOnline,
   pendingCount,
+  onlineUsers,
   buildVersion,
   buildTimestamp,
   pwaEnabled,
@@ -29,12 +31,15 @@ export default function Header({
           </button>
         </div>
         <div className="header-right">
-          <div className={`sync-indicator ${isOnline ? 'online' : 'offline'}`}>
-            <span className="sync-dot" />
-            <span className="sync-text">
-              {isOnline ? 'En ligne' : 'Hors ligne'}
-              {pendingCount > 0 && ` (${pendingCount})`}
-            </span>
+          <div className="header-status-block">
+            <div className={`sync-indicator ${isOnline ? 'online' : 'offline'}`}>
+              <span className="sync-dot" />
+              <span className="sync-text">
+                {isOnline ? 'En ligne' : 'Hors ligne'}
+                {pendingCount > 0 && ` (${pendingCount})`}
+              </span>
+            </div>
+            <div className="online-users" aria-live="polite">En ligne : {onlineUsers}</div>
           </div>
           <button className="btn-hh" onClick={onToggleHH}>
             {isHH ? 'HH ON' : 'Happy Hour'}

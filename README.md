@@ -10,6 +10,8 @@ Application PWA mobile-first de caisse / prise de commande pour bar et restaurat
 - Calculateur de monnaie (billets et pièces, rendu monnaie)
 - Fonctionne **hors ligne** (PWA offline-first)
 - Synchronise les commandes au retour du réseau
+- Synchronisation **temps réel** des prix et du mode Happy Hour via flux serveur (SSE)
+- Affiche le nombre de terminaux connectés en direct
 - Installable sur iOS et Android (ajout à l'écran d'accueil)
 - **Déduplication des commandes** via `clientOrderId` (pas de doublons)
 - **Validation serveur** des commandes (totaux, quantités, prix)
@@ -173,6 +175,10 @@ Le PIN est stocké localement dans IndexedDB (clé `adminPin`).
 | GET | `/api/products` | Liste des produits actifs |
 | POST | `/api/orders` | Créer une commande (idempotent via `clientOrderId`) |
 | POST | `/api/orders/sync` | Synchroniser des commandes offline (batch, idempotent) |
+| GET (SSE) | `/api/realtime/stream` | Flux temps réel des événements `state` et `clients` |
+| GET | `/api/realtime/state` | Snapshot de l'état temps réel (prix, happy hour, clients) |
+| POST | `/api/realtime/prices` | Publier les prix globaux |
+| POST | `/api/realtime/happy-hour` | Publier l'état Happy Hour global |
 
 ### Format d'une commande (POST /api/orders)
 

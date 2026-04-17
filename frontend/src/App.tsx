@@ -1,9 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Screen, OrderLine, PendingOrder, Product } from './types';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Screen, OrderLine, PendingOrder, Product, RealtimeState } from './types';
 import { useProducts } from './hooks/useProducts';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
-import { savePendingOrder, saveSetting, getSetting, markOrdersSynced } from './services/db';
-import { submitOrder } from './services/api';
+import { savePendingOrder, getSetting, markOrdersSynced } from './services/db';
+import {
+  submitOrder,
+  updateRealtimeHappyHour,
+  updateRealtimePrices,
+  fetchRealtimeState,
+} from './services/api';
 import { DENOMINATIONS } from './data/denominations';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
@@ -12,6 +17,14 @@ import Payment from './components/Payment';
 import PriceEditor from './components/PriceEditor';
 import { isDebugViewportEnabled } from './debug';
 import './App.css';
+
+const REALTIME_STATE_KEY = 'combar.realtime.state';
+const REALTIME_QUEUE_KEY = 'combar.realtime.queue';
+
+interface QueuedRealtimeAction {
+  type: 'updatePrices' | 'toggleHappyHour';
+  payload: Record<string, number> | boolean;
+}
 
 function initPrices(products: Product[]): Record<string, number> {
   const p: Record<string, number> = {};
@@ -27,12 +40,49 @@ function getPrice(item: Product, isHH: boolean, prices: Record<string, number>):
   return prices[key] ?? (isHH ? item.hhPrice : item.normalPrice);
 }
 
+function readCachedRealtimeState(): Partial<RealtimeState> | null {
+  try {
+    const raw = localStorage.getItem(REALTIME_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<RealtimeState>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistRealtimeState(state: Partial<RealtimeState>): void {
+  localStorage.setItem(REALTIME_STATE_KEY, JSON.stringify(state));
+}
+
+function readActionQueue(): QueuedRealtimeAction[] {
+  try {
+    const raw = localStorage.getItem(REALTIME_QUEUE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (action): action is QueuedRealtimeAction =>
+        action &&
+        (action.type === 'updatePrices' || action.type === 'toggleHappyHour')
+    );
+  } catch {
+    return [];
+  }
+}
+
+function persistActionQueue(queue: QueuedRealtimeAction[]): void {
+  localStorage.setItem(REALTIME_QUEUE_KEY, JSON.stringify(queue));
+}
+
 export default function App() {
   const viewportDebug = isDebugViewportEnabled();
   const { products } = useProducts();
   const { isOnline, pendingCount, refreshPending } = useOnlineStatus();
 
   const [isHH, setIsHH] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState(0);
   const [order, setOrder] = useState<Record<string, number>>({});
   const [screen, setScreen] = useState<Screen>('select');
   const [checked, setChecked] = useState<Record<string, number>>({});
@@ -41,6 +91,9 @@ export default function App() {
   const [confirmFeedback, setConfirmFeedback] = useState(false);
   const [adminPin, setAdminPin] = useState('0000');
 
+  const actionQueueRef = useRef<QueuedRealtimeAction[]>(readActionQueue());
+  const eventSourceRef = useRef<EventSource | null>(null);
+
   const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
   const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP || 'unknown';
   const pwaEnabled =
@@ -48,22 +101,196 @@ export default function App() {
       ? import.meta.env.PROD
       : import.meta.env.VITE_ENABLE_PWA === 'true';
 
-  // Load saved PIN and prices on mount / products change
+  const reset = useCallback(() => {
+    setOrder({});
+    setChecked({});
+    setGiven({});
+    setScreen('select');
+  }, []);
+
+  const applyRealtimeState = useCallback((newState: Partial<RealtimeState>) => {
+    if (newState.prices && typeof newState.prices === 'object') {
+      setPrices(prev => ({ ...prev, ...newState.prices }));
+    }
+
+    if (typeof newState.happyHour === 'boolean') {
+      const nextHappyHour = newState.happyHour;
+      setIsHH(prev => {
+        if (prev !== nextHappyHour) {
+          setOrder({});
+          setChecked({});
+          setGiven({});
+          setScreen('select');
+        }
+        return nextHappyHour;
+      });
+    }
+
+    if (typeof newState.clients === 'number') {
+      setOnlineUsers(newState.clients);
+    }
+
+    persistRealtimeState(newState);
+  }, []);
+
+  const enqueueAction = useCallback((action: QueuedRealtimeAction) => {
+    const queue = actionQueueRef.current;
+
+    if (action.type === 'updatePrices') {
+      const next = queue.filter(item => item.type !== 'updatePrices');
+      next.push(action);
+      actionQueueRef.current = next;
+      persistActionQueue(next);
+      return;
+    }
+
+    const next = [...queue, action];
+    actionQueueRef.current = next;
+    persistActionQueue(next);
+  }, []);
+
+  const flushQueuedActions = useCallback(async () => {
+    if (!isOnline || actionQueueRef.current.length === 0) return;
+
+    const queue = [...actionQueueRef.current];
+
+    for (const action of queue) {
+      try {
+        if (action.type === 'updatePrices') {
+          await updateRealtimePrices(action.payload as Record<string, number>);
+        } else {
+          await updateRealtimeHappyHour(Boolean(action.payload));
+        }
+      } catch {
+        return;
+      }
+    }
+
+    actionQueueRef.current = [];
+    persistActionQueue([]);
+  }, [isOnline]);
+
+  // Load admin PIN once.
   useEffect(() => {
     getSetting<string>('adminPin').then(pin => {
       if (pin) setAdminPin(pin);
     });
   }, []);
 
+  // Initialize local state from defaults + cache (or legacy IndexedDB setting fallback).
   useEffect(() => {
-    getSetting<Record<string, number>>('customPrices').then(saved => {
-      if (saved) {
-        setPrices(() => ({ ...initPrices(products), ...saved }));
-      } else {
-        setPrices(initPrices(products));
+    let cancelled = false;
+
+    async function hydrateLocalState() {
+      const defaults = initPrices(products);
+      const cachedState = readCachedRealtimeState();
+
+      if (cachedState) {
+        if (!cancelled) {
+          setPrices({ ...defaults, ...(cachedState.prices || {}) });
+          setIsHH(Boolean(cachedState.happyHour));
+          if (typeof cachedState.clients === 'number') {
+            setOnlineUsers(cachedState.clients);
+          }
+        }
+        return;
       }
-    });
+
+      const legacyPrices = await getSetting<Record<string, number>>('customPrices');
+      if (!cancelled) {
+        setPrices({ ...defaults, ...(legacyPrices || {}) });
+      }
+    }
+
+    hydrateLocalState();
+
+    return () => {
+      cancelled = true;
+    };
   }, [products]);
+
+  // Network reconnection: fetch latest realtime state + flush queued actions.
+  useEffect(() => {
+    if (!isOnline) return;
+
+    fetchRealtimeState()
+      .then(state => applyRealtimeState(state))
+      .catch(() => {
+        // Keep local cached state if fetch fails.
+      });
+
+    flushQueuedActions();
+  }, [isOnline, applyRealtimeState, flushQueuedActions]);
+
+  // Realtime stream subscription.
+  useEffect(() => {
+    if (!isOnline) {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+      return;
+    }
+
+    const source = new EventSource('/api/realtime/stream');
+    eventSourceRef.current = source;
+
+    const onState = (event: MessageEvent<string>) => {
+      try {
+        const parsed = JSON.parse(event.data) as Partial<RealtimeState>;
+        applyRealtimeState(parsed);
+      } catch {
+        // Ignore malformed state payload
+      }
+    };
+
+    const onClients = (event: MessageEvent<string>) => {
+      const count = Number(event.data);
+      if (!Number.isNaN(count)) {
+        applyRealtimeState({ clients: count });
+      }
+    };
+
+    source.addEventListener('state', onState as EventListener);
+    source.addEventListener('clients', onClients as EventListener);
+
+    return () => {
+      source.removeEventListener('state', onState as EventListener);
+      source.removeEventListener('clients', onClients as EventListener);
+      source.close();
+      if (eventSourceRef.current === source) {
+        eventSourceRef.current = null;
+      }
+    };
+  }, [applyRealtimeState, isOnline]);
+
+  const sendOrQueuePricesUpdate = useCallback(async (nextPrices: Record<string, number>) => {
+    persistRealtimeState({ prices: nextPrices, happyHour: isHH, clients: onlineUsers });
+
+    if (isOnline) {
+      try {
+        await updateRealtimePrices(nextPrices);
+        return;
+      } catch {
+        // Falls through to queue mode
+      }
+    }
+
+    enqueueAction({ type: 'updatePrices', payload: nextPrices });
+  }, [enqueueAction, isHH, isOnline, onlineUsers]);
+
+  const sendOrQueueHappyHourUpdate = useCallback(async (nextHappyHour: boolean) => {
+    persistRealtimeState({ prices, happyHour: nextHappyHour, clients: onlineUsers });
+
+    if (isOnline) {
+      try {
+        await updateRealtimeHappyHour(nextHappyHour);
+        return;
+      } catch {
+        // Falls through to queue mode
+      }
+    }
+
+    enqueueAction({ type: 'toggleHappyHour', payload: nextHappyHour });
+  }, [enqueueAction, isOnline, onlineUsers, prices]);
 
   const add = (id: string) => setOrder(p => ({ ...p, [id]: (p[id] || 0) + 1 }));
   const remove = (id: string) => setOrder(p => {
@@ -73,8 +300,14 @@ export default function App() {
     return n;
   });
 
-  const toggleHH = () => { setIsHH(v => !v); setOrder({}); setChecked({}); setScreen('select'); };
-  const reset = () => { setOrder({}); setChecked({}); setGiven({}); setScreen('select'); };
+  const toggleHH = () => {
+    const nextHappyHour = !isHH;
+    setIsHH(nextHappyHour);
+    void sendOrQueueHappyHourUpdate(nextHappyHour);
+    setOrder({});
+    setChecked({});
+    setScreen('select');
+  };
 
   const checkItem = (id: string, max: number) =>
     setChecked(p => { const cur = p[id] || 0; return cur >= max ? p : { ...p, [id]: cur + 1 }; });
@@ -92,19 +325,19 @@ export default function App() {
   const setPrice = useCallback((id: string, type: string, val: string) => {
     const num = parseFloat(val);
     if (!isNaN(num) && num >= 0) {
-      setPrices(p => {
-        const updated = { ...p, [`${id}_${type}`]: num };
-        saveSetting('customPrices', updated);
+      setPrices(prev => {
+        const updated = { ...prev, [`${id}_${type}`]: num };
+        void sendOrQueuePricesUpdate(updated);
         return updated;
       });
     }
-  }, []);
+  }, [sendOrQueuePricesUpdate]);
 
   const resetPrices = useCallback(() => {
     const fresh = initPrices(products);
     setPrices(fresh);
-    saveSetting('customPrices', fresh);
-  }, [products]);
+    void sendOrQueuePricesUpdate(fresh);
+  }, [products, sendOrQueuePricesUpdate]);
 
   // PIN-protected navigation to price editor
   const handleNavigatePrices = useCallback(() => {
@@ -198,7 +431,7 @@ export default function App() {
       setConfirmFeedback(false);
       reset();
     }, 1500);
-  }, [given, total, isHH, lines, refreshPending]);
+  }, [given, total, isHH, lines, refreshPending, reset]);
 
   if (confirmFeedback) {
     return (
@@ -220,6 +453,7 @@ export default function App() {
         isHH={isHH}
         isOnline={isOnline}
         pendingCount={pendingCount}
+        onlineUsers={onlineUsers}
         onToggleHH={toggleHH}
         onNavigatePrices={handleNavigatePrices}
         buildVersion={buildVersion}
