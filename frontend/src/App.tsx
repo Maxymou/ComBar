@@ -41,6 +41,9 @@ export default function App() {
   const [confirmFeedback, setConfirmFeedback] = useState(false);
   const [adminPin, setAdminPin] = useState('0000');
 
+  const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
+  const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP || 'unknown';
+
   // Load saved PIN and prices on mount / products change
   useEffect(() => {
     getSetting<string>('adminPin').then(pin => {
@@ -215,6 +218,8 @@ export default function App() {
         pendingCount={pendingCount}
         onToggleHH={toggleHH}
         onNavigatePrices={handleNavigatePrices}
+        buildVersion={buildVersion}
+        buildTimestamp={buildTimestamp}
       />
 
       <main className={`app-content${viewportDebug ? ' viewport-debug-content' : ''}`} data-screen={screen}>
