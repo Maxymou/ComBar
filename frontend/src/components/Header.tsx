@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { PresenceDevice } from '../types';
 import { SyncState } from '../hooks/useOnlineStatus';
 
@@ -62,7 +63,6 @@ export default function Header({
   const [isDevicesPopoverOpen, setIsDevicesPopoverOpen] = useState(false);
   const [renameDraft, setRenameDraft] = useState(localDeviceName);
   const [isRenaming, setIsRenaming] = useState(false);
-  const popoverRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setRenameDraft(localDeviceName);
@@ -71,17 +71,15 @@ export default function Header({
   useEffect(() => {
     if (!isDevicesPopoverOpen) return;
 
-    function handleOutsideClick(event: MouseEvent | TouchEvent) {
-      if (!popoverRef.current?.contains(event.target as Node)) {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         setIsDevicesPopoverOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('touchstart', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('touchstart', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isDevicesPopoverOpen]);
 
@@ -122,7 +120,7 @@ export default function Header({
           </button>
         </div>
         <div className="header-right">
-          <div className="header-status-block" ref={popoverRef}>
+          <div className="header-status-block">
             <div
               className={`sync-indicator ${syncClassName} ${canOpenDevicesPopover ? 'clickable' : ''}`}
               role={canOpenDevicesPopover ? 'button' : undefined}
@@ -161,57 +159,66 @@ export default function Header({
                 </button>
               )}
             </div>
-            {isDevicesPopoverOpen && (
-              <div className="connected-devices-popover" role="dialog" aria-label="Terminaux connectés">
-                <div className="connected-devices-title">Terminaux</div>
-                <div className="connected-devices-summary">{onlineUsers} connectés · {syncLabel}</div>
+            {isDevicesPopoverOpen && createPortal(
+              <div className="terminal-overlay" onClick={() => setIsDevicesPopoverOpen(false)}>
+                <div
+                  className="terminal-popover connected-devices-popover"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Terminaux connectés"
+                  onClick={event => event.stopPropagation()}
+                >
+                  <div className="connected-devices-title">Terminaux</div>
+                  <div className="connected-devices-summary">{onlineUsers} connectés · {syncLabel}</div>
 
-                <div className="terminal-rename-row">
-                  <input
-                    className="terminal-rename-input"
-                    value={renameDraft}
-                    maxLength={12}
-                    onChange={event => setRenameDraft(event.target.value)}
-                    placeholder="Nom du terminal"
-                    aria-label="Nom du terminal"
-                  />
-                  <button className="terminal-rename-btn" onClick={handleRename} disabled={isRenaming} type="button">
-                    {isRenaming ? '...' : 'Renommer'}
-                  </button>
+                  <div className="terminal-rename-row">
+                    <input
+                      className="terminal-rename-input"
+                      value={renameDraft}
+                      maxLength={12}
+                      onChange={event => setRenameDraft(event.target.value)}
+                      placeholder="Nom du terminal"
+                      aria-label="Nom du terminal"
+                    />
+                    <button className="terminal-rename-btn" onClick={handleRename} disabled={isRenaming} type="button">
+                      {isRenaming ? '...' : 'Renommer'}
+                    </button>
+                  </div>
+
+                  <div className="devices-section-title">Connectés</div>
+                  {connectedDevices.length > 0 ? (
+                    <ul className="connected-devices-list">
+                      {connectedDevices.map(device => (
+                        <li className="connected-device-row" key={device.deviceId}>
+                          <span className="connected-device-main">
+                            <span className="connected-device-name">{device.deviceName || 'Terminal'}</span>
+                            <span className="connected-device-status">en ligne</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="connected-devices-fallback">Aucun terminal connecté</div>
+                  )}
+
+                  <div className="devices-section-title">Actifs récemment</div>
+                  {recentlyActiveDevices.length > 0 ? (
+                    <ul className="connected-devices-list">
+                      {recentlyActiveDevices.map(device => (
+                        <li className="connected-device-row" key={device.deviceId}>
+                          <span className="connected-device-main">
+                            <span className="connected-device-name">{device.deviceName || 'Terminal'}</span>
+                            <span className="connected-device-time">{formatLastSeen(device.lastSeenAt)}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="connected-devices-fallback">Aucune activité récente</div>
+                  )}
                 </div>
-
-                <div className="devices-section-title">Connectés</div>
-                {connectedDevices.length > 0 ? (
-                  <ul className="connected-devices-list">
-                    {connectedDevices.map(device => (
-                      <li className="connected-device-row" key={device.deviceId}>
-                        <span className="connected-device-main">
-                          <span className="connected-device-name">{device.deviceName || 'Terminal'}</span>
-                          <span className="connected-device-status">en ligne</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="connected-devices-fallback">Aucun terminal connecté</div>
-                )}
-
-                <div className="devices-section-title">Actifs récemment</div>
-                {recentlyActiveDevices.length > 0 ? (
-                  <ul className="connected-devices-list">
-                    {recentlyActiveDevices.map(device => (
-                      <li className="connected-device-row" key={device.deviceId}>
-                        <span className="connected-device-main">
-                          <span className="connected-device-name">{device.deviceName || 'Terminal'}</span>
-                          <span className="connected-device-time">{formatLastSeen(device.lastSeenAt)}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="connected-devices-fallback">Aucune activité récente</div>
-                )}
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
           <button className="btn-hh" onClick={onToggleHH}>
