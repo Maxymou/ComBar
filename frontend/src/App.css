@@ -9,12 +9,13 @@
   --sar:env(safe-area-inset-right,0px);
 }
 html{
-  height:var(--app-height);
+  height:100%;
+  min-height:var(--app-height);
   overflow:hidden;
   background:#000;
 }
 body,#root{
-  height:var(--app-height);
+  height:100%;
   min-height:var(--app-height);
   overflow:hidden;
   background:#000;
@@ -30,12 +31,19 @@ body{
 }
 .btn-reset-style{background:none;border:none;color:inherit;font:inherit;cursor:pointer;text-align:inherit;display:flex;flex-direction:column;align-items:center;width:100%;}
 
-/* ── APP SHELL (Layer A: true fullscreen root, no transform) ── */
+/* ── APP SHELL (Layer A: true fullscreen root, no transform) ──
+ * position:fixed + inset:0 pins to the real visual viewport (including iOS
+ * safe areas in standalone PWA). We purposefully do NOT set an explicit
+ * `height` here: on iPhone PWA, --app-height can still be a slight under-
+ * estimate, and setting `height: var(--app-height)` would override the
+ * bottom anchor of inset:0 and leave a gap at the bottom. `min-height`
+ * keeps a safety floor while letting the shell fill the real viewport.
+ */
 .app-shell {
   position: fixed;
   inset: 0;
   width: 100%;
-  height: var(--app-height);
+  min-height: var(--app-height);
   overflow: hidden;
   background: #000;
 }
