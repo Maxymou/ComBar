@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Screen, OrderLine, PendingOrder, Product, RealtimeState } from './types';
+import { Screen, OrderLine, PendingOrder, Product, RealtimeState, ConnectedDevice } from './types';
 import { useProducts } from './hooks/useProducts';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { savePendingOrder, getSetting, markOrdersSynced } from './services/db';
@@ -20,6 +20,8 @@ import './App.css';
 
 const REALTIME_STATE_KEY = 'combar.realtime.state';
 const REALTIME_QUEUE_KEY = 'combar.realtime.queue';
+const DEVICE_ID_KEY = 'combar.device.id';
+const DEVICE_NAME_KEY = 'combar.device.name';
 
 interface QueuedRealtimeAction {
   type: 'updatePrices' | 'toggleHappyHour';
@@ -76,6 +78,23 @@ function persistActionQueue(queue: QueuedRealtimeAction[]): void {
   localStorage.setItem(REALTIME_QUEUE_KEY, JSON.stringify(queue));
 }
 
+function getOrCreateDeviceIdentity(): { deviceId: string; deviceName: string } {
+  const existingDeviceId = localStorage.getItem(DEVICE_ID_KEY);
+  const existingDeviceName = localStorage.getItem(DEVICE_NAME_KEY);
+
+  if (existingDeviceId && existingDeviceName) {
+    return { deviceId: existingDeviceId, deviceName: existingDeviceName };
+  }
+
+  const generatedDeviceId = existingDeviceId || crypto.randomUUID();
+  const generatedDeviceName = existingDeviceName || `Terminal ${generatedDeviceId.slice(-4).toUpperCase()}`;
+
+  localStorage.setItem(DEVICE_ID_KEY, generatedDeviceId);
+  localStorage.setItem(DEVICE_NAME_KEY, generatedDeviceName);
+
+  return { deviceId: generatedDeviceId, deviceName: generatedDeviceName };
+}
+
 export default function App() {
   const viewportDebug = isDebugViewportEnabled();
   const { products } = useProducts();
@@ -83,6 +102,7 @@ export default function App() {
 
   const [isHH, setIsHH] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState(0);
+  const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
   const [order, setOrder] = useState<Record<string, number>>({});
   const [screen, setScreen] = useState<Screen>('select');
   const [checked, setChecked] = useState<Record<string, number>>({});
@@ -93,6 +113,7 @@ export default function App() {
 
   const actionQueueRef = useRef<QueuedRealtimeAction[]>(readActionQueue());
   const eventSourceRef = useRef<EventSource | null>(null);
+  const deviceIdentityRef = useRef(getOrCreateDeviceIdentity());
 
   const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
   const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP || 'unknown';
@@ -126,8 +147,18 @@ export default function App() {
       });
     }
 
-    if (typeof newState.clients === 'number') {
-      setOnlineUsers(newState.clients);
+    const nextClientsCount =
+      typeof newState.clientsCount === 'number'
+        ? newState.clientsCount
+        : typeof newState.clients === 'number'
+          ? newState.clients
+          : undefined;
+    if (typeof nextClientsCount === 'number') {
+      setOnlineUsers(nextClientsCount);
+    }
+
+    if (Array.isArray(newState.connectedDevices)) {
+      setConnectedDevices(newState.connectedDevices);
     }
 
     persistRealtimeState(newState);
@@ -189,9 +220,14 @@ export default function App() {
         if (!cancelled) {
           setPrices({ ...defaults, ...(cachedState.prices || {}) });
           setIsHH(Boolean(cachedState.happyHour));
-          if (typeof cachedState.clients === 'number') {
-            setOnlineUsers(cachedState.clients);
-          }
+          const cachedClientsCount =
+            typeof cachedState.clientsCount === 'number'
+              ? cachedState.clientsCount
+              : typeof cachedState.clients === 'number'
+                ? cachedState.clients
+                : 0;
+          setOnlineUsers(cachedClientsCount);
+          setConnectedDevices(Array.isArray(cachedState.connectedDevices) ? cachedState.connectedDevices : []);
         }
         return;
       }
@@ -230,7 +266,11 @@ export default function App() {
       return;
     }
 
-    const source = new EventSource('/api/realtime/stream');
+    const streamParams = new URLSearchParams({
+      deviceId: deviceIdentityRef.current.deviceId,
+      deviceName: deviceIdentityRef.current.deviceName,
+    });
+    const source = new EventSource(`/api/realtime/stream?${streamParams.toString()}`);
     eventSourceRef.current = source;
 
     const onState = (event: MessageEvent<string>) => {
@@ -245,7 +285,7 @@ export default function App() {
     const onClients = (event: MessageEvent<string>) => {
       const count = Number(event.data);
       if (!Number.isNaN(count)) {
-        applyRealtimeState({ clients: count });
+        applyRealtimeState({ clients: count, clientsCount: count });
       }
     };
 
@@ -263,7 +303,13 @@ export default function App() {
   }, [applyRealtimeState, isOnline]);
 
   const sendOrQueuePricesUpdate = useCallback(async (nextPrices: Record<string, number>) => {
-    persistRealtimeState({ prices: nextPrices, happyHour: isHH, clients: onlineUsers });
+    persistRealtimeState({
+      prices: nextPrices,
+      happyHour: isHH,
+      clients: onlineUsers,
+      clientsCount: onlineUsers,
+      connectedDevices,
+    });
 
     if (isOnline) {
       try {
@@ -275,10 +321,16 @@ export default function App() {
     }
 
     enqueueAction({ type: 'updatePrices', payload: nextPrices });
-  }, [enqueueAction, isHH, isOnline, onlineUsers]);
+  }, [connectedDevices, enqueueAction, isHH, isOnline, onlineUsers]);
 
   const sendOrQueueHappyHourUpdate = useCallback(async (nextHappyHour: boolean) => {
-    persistRealtimeState({ prices, happyHour: nextHappyHour, clients: onlineUsers });
+    persistRealtimeState({
+      prices,
+      happyHour: nextHappyHour,
+      clients: onlineUsers,
+      clientsCount: onlineUsers,
+      connectedDevices,
+    });
 
     if (isOnline) {
       try {
@@ -290,7 +342,7 @@ export default function App() {
     }
 
     enqueueAction({ type: 'toggleHappyHour', payload: nextHappyHour });
-  }, [enqueueAction, isOnline, onlineUsers, prices]);
+  }, [connectedDevices, enqueueAction, isOnline, onlineUsers, prices]);
 
   const add = (id: string) => setOrder(p => ({ ...p, [id]: (p[id] || 0) + 1 }));
   const remove = (id: string) => setOrder(p => {
@@ -454,6 +506,7 @@ export default function App() {
         isOnline={isOnline}
         pendingCount={pendingCount}
         onlineUsers={onlineUsers}
+        connectedDevices={connectedDevices}
         onToggleHH={toggleHH}
         onNavigatePrices={handleNavigatePrices}
         buildVersion={buildVersion}

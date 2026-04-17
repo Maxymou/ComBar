@@ -4,12 +4,22 @@ export interface RealtimeState {
   prices: Record<string, number>;
   happyHour: boolean;
   clients: number;
+  clientsCount: number;
+  connectedDevices: ConnectedDevice[];
+}
+
+export interface ConnectedDevice {
+  deviceId: string;
+  deviceName: string;
+  connectedAt: string;
 }
 
 const DEFAULT_STATE: RealtimeState = {
   prices: {},
   happyHour: false,
   clients: 0,
+  clientsCount: 0,
+  connectedDevices: [],
 };
 
 function sanitizePrices(value: unknown): Record<string, number> {
@@ -37,6 +47,8 @@ export function sanitizeState(value: unknown): RealtimeState {
     prices: sanitizePrices(input.prices),
     happyHour: Boolean(input.happyHour),
     clients: 0,
+    clientsCount: 0,
+    connectedDevices: [],
   };
 }
 
