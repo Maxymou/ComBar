@@ -4,6 +4,7 @@ interface HeaderProps {
   pendingCount: number;
   buildVersion: string;
   buildTimestamp: string;
+  pwaEnabled: boolean;
   onToggleHH: () => void;
   onNavigatePrices: () => void;
 }
@@ -14,6 +15,7 @@ export default function Header({
   pendingCount,
   buildVersion,
   buildTimestamp,
+  pwaEnabled,
   onToggleHH,
   onNavigatePrices,
 }: HeaderProps) {
@@ -40,7 +42,7 @@ export default function Header({
         </div>
       </div>
       <div className="build-info" aria-label="build-version">
-        v{buildVersion} · {buildTimestamp}
+        v{buildVersion} · {buildTimestamp} · PWA {pwaEnabled ? 'ON' : 'OFF'}
       </div>
     </div>
   );
