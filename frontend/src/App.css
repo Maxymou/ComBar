@@ -1,13 +1,25 @@
 /* ── RESET ── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{--app-height:100dvh;}
-html,body,#root{
-  height:100%;
-  min-height:100%;
+:root{
+  --app-height:100vh;
+  --vvh:100vh;
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);
+  --sar:env(safe-area-inset-right,0px);
+}
+html{
+  height:var(--app-height);
+  overflow:hidden;
   background:#000;
 }
-html,body{
+body,#root{
+  height:var(--app-height);
+  min-height:var(--app-height);
   overflow:hidden;
+  background:#000;
+}
+body{
   overscroll-behavior:none;
   -webkit-text-size-adjust:100%;
   -webkit-tap-highlight-color:transparent;
@@ -15,26 +27,37 @@ html,body{
 #root{
   display:flex;
   flex-direction:column;
-  min-height:var(--app-height);
 }
 .btn-reset-style{background:none;border:none;color:inherit;font:inherit;cursor:pointer;text-align:inherit;display:flex;flex-direction:column;align-items:center;width:100%;}
 
 /* ── APP SHELL ── */
 .app {
-  height: 100vh; /* legacy fallback */
-  height: 100dvh; /* modern fallback */
-  height: var(--app-height, 100dvh); /* JS-measured actual viewport */
-  min-height: var(--app-height, 100dvh);
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: var(--app-height);
+  min-height: var(--app-height);
   background: #000;
   color: #fff;
   font-family: 'Barlow', sans-serif;
   display: flex;
   flex-direction: column;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) calc(env(safe-area-inset-right, 0px) + 10px) calc(env(safe-area-inset-bottom, 0px) + 12px) calc(env(safe-area-inset-left, 0px) + 10px);
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
+  padding: calc(var(--sat) + 10px) calc(var(--sar) + 10px) calc(var(--sab) + 12px) calc(var(--sal) + 10px);
   overflow: hidden;
+  isolation: isolate;
+}
+.app::after{
+  content:'';
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:var(--sab);
+  background:#000;
+  pointer-events:none;
 }
 .app.hh { background: #07000f; }
 
