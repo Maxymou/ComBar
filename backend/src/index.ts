@@ -6,6 +6,7 @@ import ordersRouter from './routes/orders';
 import { initDatabase } from './db/init';
 import pool from './db/pool';
 import {
+  ConnectedDevice,
   RealtimeState,
   loadRealtimeState,
   persistRealtimeState,
@@ -26,9 +27,18 @@ let realtimeState: RealtimeState = {
   prices: {},
   happyHour: false,
   clients: 0,
+  clientsCount: 0,
+  connectedDevices: [],
 };
 
-const sseClients = new Set<Response>();
+interface SseClient {
+  response: Response;
+  deviceId: string;
+  deviceName: string;
+  connectedAt: string;
+}
+
+const sseClientsByDevice = new Map<string, SseClient>();
 
 function writeSse(res: Response, event: string, data: unknown): void {
   res.write(`event: ${event}\n`);
@@ -36,8 +46,8 @@ function writeSse(res: Response, event: string, data: unknown): void {
 }
 
 function broadcast(event: string, data: unknown): void {
-  for (const client of sseClients) {
-    writeSse(client, event, data);
+  for (const client of sseClientsByDevice.values()) {
+    writeSse(client.response, event, data);
   }
 }
 
@@ -46,21 +56,56 @@ function broadcastState(): void {
 }
 
 function broadcastClients(): void {
-  broadcast('clients', realtimeState.clients);
+  broadcast('clients', realtimeState.clientsCount);
+}
+
+function getConnectedDevicesSnapshot(): ConnectedDevice[] {
+  return Array.from(sseClientsByDevice.values()).map(client => ({
+    deviceId: client.deviceId,
+    deviceName: client.deviceName,
+    connectedAt: client.connectedAt,
+  }));
+}
+
+function refreshConnectedClientsState(): void {
+  const connectedDevices = getConnectedDevicesSnapshot();
+  const clientsCount = connectedDevices.length;
+  realtimeState = {
+    ...realtimeState,
+    clients: clientsCount,
+    clientsCount,
+    connectedDevices,
+  };
 }
 
 app.get('/api/realtime/state', (_req: Request, res: Response) => {
   res.json(realtimeState);
 });
 
-app.get('/api/realtime/stream', (_req: Request, res: Response) => {
+app.get('/api/realtime/stream', (req: Request, res: Response) => {
+  const rawDeviceId = String(req.query.deviceId || '').trim();
+  const rawDeviceName = String(req.query.deviceName || '').trim();
+  const deviceId = rawDeviceId || `anon-${crypto.randomUUID()}`;
+  const deviceName = rawDeviceName || `Terminal ${deviceId.slice(-4).toUpperCase()}`;
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  sseClients.add(res);
-  realtimeState.clients = sseClients.size;
+  const existingClient = sseClientsByDevice.get(deviceId);
+  if (existingClient) {
+    existingClient.response.end();
+    sseClientsByDevice.delete(deviceId);
+  }
+
+  sseClientsByDevice.set(deviceId, {
+    response: res,
+    deviceId,
+    deviceName,
+    connectedAt: new Date().toISOString(),
+  });
+  refreshConnectedClientsState();
   writeSse(res, 'state', realtimeState);
   broadcastClients();
 
@@ -70,8 +115,11 @@ app.get('/api/realtime/stream', (_req: Request, res: Response) => {
 
   res.on('close', () => {
     clearInterval(keepAlive);
-    sseClients.delete(res);
-    realtimeState.clients = sseClients.size;
+    const currentClient = sseClientsByDevice.get(deviceId);
+    if (currentClient?.response === res) {
+      sseClientsByDevice.delete(deviceId);
+    }
+    refreshConnectedClientsState();
     broadcastClients();
   });
 });
@@ -134,6 +182,8 @@ async function start(): Promise<void> {
     realtimeState = {
       ...persisted,
       clients: 0,
+      clientsCount: 0,
+      connectedDevices: [],
     };
 
     app.listen(PORT, '0.0.0.0', () => {

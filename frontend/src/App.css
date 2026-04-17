@@ -155,8 +155,7 @@ body::before{
 }
 .header-left { display: flex; align-items: center; }
 .header-right { display: flex; align-items: center; gap: 8px; }
-.header-status-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.online-users { font-size: 0.58rem; color: #888; letter-spacing: 0.4px; }
+.header-status-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; position: relative; }
 .header-logo {
   height: 36px;
   width: auto;
@@ -206,6 +205,8 @@ body::before{
 }
 .sync-indicator.online { border-color: #00E676; }
 .sync-indicator.offline { border-color: #FF3B30; }
+.sync-indicator.clickable { cursor: pointer; }
+.sync-indicator.clickable:active { transform: scale(0.98); }
 .sync-dot {
   width: 6px;
   height: 6px;
@@ -215,6 +216,68 @@ body::before{
 .online .sync-dot { background: #00E676; }
 .offline .sync-dot { background: #FF3B30; }
 .sync-text { color: #999; white-space: nowrap; }
+
+.connected-devices-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(78vw, 240px);
+  background: #101010;
+  border: 1px solid #2d2d2d;
+  border-radius: 10px;
+  padding: 8px;
+  z-index: 20;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+.connected-devices-title {
+  font-size: 0.62rem;
+  letter-spacing: 0.5px;
+  color: #cfcfcf;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.connected-devices-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.connected-device-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid #1f1f1f;
+  padding-bottom: 6px;
+}
+.connected-device-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.connected-device-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.connected-device-name {
+  font-size: 0.64rem;
+  color: #f2f2f2;
+  font-weight: 600;
+}
+.connected-device-status {
+  font-size: 0.56rem;
+  color: #00E676;
+  text-transform: uppercase;
+}
+.connected-device-time {
+  font-size: 0.54rem;
+  color: #777;
+  text-align: right;
+}
+.connected-devices-fallback {
+  font-size: 0.62rem;
+  color: #999;
+}
 
 /* ── HAPPY HOUR BTN ── */
 .btn-hh {

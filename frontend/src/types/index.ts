@@ -44,5 +44,13 @@ export interface Denomination {
 export interface RealtimeState {
   prices: Record<string, number>;
   happyHour: boolean;
-  clients: number;
+  clients: number; // Legacy counter kept for backward compatibility
+  clientsCount: number;
+  connectedDevices: ConnectedDevice[];
+}
+
+export interface ConnectedDevice {
+  deviceId: string;
+  deviceName: string;
+  connectedAt: string;
 }
