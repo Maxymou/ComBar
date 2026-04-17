@@ -215,56 +215,58 @@ export default function App() {
         onNavigatePrices={handleNavigatePrices}
       />
 
-      {screen === 'select' && (
-        <ProductGrid
-          products={products}
-          order={order}
-          isHH={isHH}
-          prices={prices}
-          onAdd={add}
-          onRemove={remove}
-          onValidate={() => setScreen('summary')}
-          onCancel={() => setOrder({})}
-        />
-      )}
+      <main className="app-content">
+        {screen === 'select' && (
+          <ProductGrid
+            products={products}
+            order={order}
+            isHH={isHH}
+            prices={prices}
+            onAdd={add}
+            onRemove={remove}
+            onValidate={() => setScreen('summary')}
+            onCancel={() => setOrder({})}
+          />
+        )}
 
-      {screen === 'summary' && (
-        <Summary
-          lines={lines}
-          bonusShooters={bonusShooters}
-          total={total}
-          checked={checked}
-          isHH={isHH}
-          onCheckItem={checkItem}
-          onUncheckItem={uncheckItem}
-          onGoPayment={() => { setGiven({}); setScreen('monnaie'); }}
-          onGoBack={() => setScreen('select')}
-          onReset={reset}
-        />
-      )}
+        {screen === 'summary' && (
+          <Summary
+            lines={lines}
+            bonusShooters={bonusShooters}
+            total={total}
+            checked={checked}
+            isHH={isHH}
+            onCheckItem={checkItem}
+            onUncheckItem={uncheckItem}
+            onGoPayment={() => { setGiven({}); setScreen('monnaie'); }}
+            onGoBack={() => setScreen('select')}
+            onReset={reset}
+          />
+        )}
 
-      {screen === 'monnaie' && (
-        <Payment
-          total={total}
-          given={given}
-          isHH={isHH}
-          onAddGiven={addGiven}
-          onRemoveGiven={removeGiven}
-          onGoBack={() => setScreen('summary')}
-          onConfirm={handleConfirmPayment}
-        />
-      )}
+        {screen === 'monnaie' && (
+          <Payment
+            total={total}
+            given={given}
+            isHH={isHH}
+            onAddGiven={addGiven}
+            onRemoveGiven={removeGiven}
+            onGoBack={() => setScreen('summary')}
+            onConfirm={handleConfirmPayment}
+          />
+        )}
 
-      {screen === 'prices' && (
-        <PriceEditor
-          products={products}
-          prices={prices}
-          isHH={isHH}
-          onSetPrice={setPrice}
-          onResetPrices={resetPrices}
-          onGoBack={() => setScreen('select')}
-        />
-      )}
+        {screen === 'prices' && (
+          <PriceEditor
+            products={products}
+            prices={prices}
+            isHH={isHH}
+            onSetPrice={setPrice}
+            onResetPrices={resetPrices}
+            onGoBack={() => setScreen('select')}
+          />
+        )}
+      </main>
     </div>
     </div>
   );

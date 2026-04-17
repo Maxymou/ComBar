@@ -36,34 +36,36 @@ export default function Payment({ total, given, isHH, onAddGiven, onRemoveGiven,
         </span>
       </div>
 
-      <div className="money-sec">Billets</div>
-      <div className="money-grid">
-        {billets.map(m => {
-          const qty = given[m.id] || 0;
-          return (
-            <button key={m.id} className={`money-card billet btn-reset-style${qty > 0 ? ' money-on' : ''}`} onClick={() => onAddGiven(m.id)} type="button">
-              {qty > 0 && <span className="money-badge">{qty}</span>}
-              {qty > 0 && <button className="money-minus" onClick={e => { e.stopPropagation(); onRemoveGiven(m.id); }} type="button">−</button>}
-              <span className="money-icon">💶</span>
-              <span className="money-label">{m.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <div className="monnaie-scroll">
+        <div className="money-sec">Billets</div>
+        <div className="money-grid">
+          {billets.map(m => {
+            const qty = given[m.id] || 0;
+            return (
+              <button key={m.id} className={`money-card billet btn-reset-style${qty > 0 ? ' money-on' : ''}`} onClick={() => onAddGiven(m.id)} type="button">
+                {qty > 0 && <span className="money-badge">{qty}</span>}
+                {qty > 0 && <button className="money-minus" onClick={e => { e.stopPropagation(); onRemoveGiven(m.id); }} type="button">−</button>}
+                <span className="money-icon">💶</span>
+                <span className="money-label">{m.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-      <div className="money-sec">Pièces</div>
-      <div className="money-grid">
-        {pieces.map(m => {
-          const qty = given[m.id] || 0;
-          return (
-            <button key={m.id} className={`money-card piece btn-reset-style${qty > 0 ? ' money-on' : ''}`} onClick={() => onAddGiven(m.id)} type="button">
-              {qty > 0 && <span className="money-badge">{qty}</span>}
-              {qty > 0 && <button className="money-minus" onClick={e => { e.stopPropagation(); onRemoveGiven(m.id); }} type="button">−</button>}
-              <span className="money-icon">🪙</span>
-              <span className="money-label">{m.label}</span>
-            </button>
-          );
-        })}
+        <div className="money-sec">Pièces</div>
+        <div className="money-grid">
+          {pieces.map(m => {
+            const qty = given[m.id] || 0;
+            return (
+              <button key={m.id} className={`money-card piece btn-reset-style${qty > 0 ? ' money-on' : ''}`} onClick={() => onAddGiven(m.id)} type="button">
+                {qty > 0 && <span className="money-badge">{qty}</span>}
+                {qty > 0 && <button className="money-minus" onClick={e => { e.stopPropagation(); onRemoveGiven(m.id); }} type="button">−</button>}
+                <span className="money-icon">🪙</span>
+                <span className="money-label">{m.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <button
