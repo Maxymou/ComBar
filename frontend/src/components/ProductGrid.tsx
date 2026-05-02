@@ -1,4 +1,5 @@
 import { Product } from '../types';
+import { getCategoryMeta, normalizeCategory } from '../utils/categories';
 import ProductCard from './ProductCard';
 
 interface ProductGridProps {
@@ -18,58 +19,40 @@ function getPrice(item: Product, isHH: boolean, prices: Record<string, number>):
 }
 
 export default function ProductGrid({ products, order, isHH, prices, onAdd, onRemove, onValidate, onCancel }: ProductGridProps) {
-  const drinks = products.filter(p => p.category === 'drink' || p.category === 'soft');
-  const consignes = products.filter(p => p.category === 'consigne');
-  const food = products.filter(p => p.category === 'food' || p.category === 'sandwich');
+  const groupedProducts = products.reduce<Record<string, Product[]>>((acc, product) => {
+    const key = normalizeCategory(product.category);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(product);
+    return acc;
+  }, {});
+
+  const groups = Object.entries(groupedProducts)
+    .map(([key, items]) => ({ key, items, ...getCategoryMeta(key) }))
+    .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+
   const totalItems = Object.values(order).reduce((s, v) => s + v, 0);
 
   return (
     <div className="select-screen screen-wrapper">
       <div className="select-scroll">
-        <div className="sec">Boissons</div>
-        <div className="grid drinks">
-          {drinks.map(item => (
-            <ProductCard
-              key={item.id}
-              item={item}
-              qty={order[item.id] || 0}
-              price={getPrice(item, isHH, prices)}
-              isHH={isHH}
-              onAdd={() => onAdd(item.id)}
-              onRemove={() => onRemove(item.id)}
-            />
-          ))}
-        </div>
-
-        <div className="sec">Consignes</div>
-        <div className="grid consignes">
-          {consignes.map(item => (
-            <ProductCard
-              key={item.id}
-              item={item}
-              qty={order[item.id] || 0}
-              price={getPrice(item, false, prices)}
-              isHH={false}
-              onAdd={() => onAdd(item.id)}
-              onRemove={() => onRemove(item.id)}
-            />
-          ))}
-        </div>
-
-        <div className="sec">Sandwiches</div>
-        <div className="grid food">
-          {food.map(item => (
-            <ProductCard
-              key={item.id}
-              item={item}
-              qty={order[item.id] || 0}
-              price={getPrice(item, false, prices)}
-              isHH={false}
-              onAdd={() => onAdd(item.id)}
-              onRemove={() => onRemove(item.id)}
-            />
-          ))}
-        </div>
+        {groups.map(group => (
+          <div key={group.key}>
+            <div className="sec">{group.label.replace(/^\S+\s/, '')}</div>
+            <div className={`grid ${group.key}`}>
+              {group.items.map(item => (
+                <ProductCard
+                  key={item.id}
+                  item={item}
+                  qty={order[item.id] || 0}
+                  price={getPrice(item, normalizeCategory(item.category) === 'drink' ? isHH : false, prices)}
+                  isHH={normalizeCategory(item.category) === 'drink' ? isHH : false}
+                  onAdd={() => onAdd(item.id)}
+                  onRemove={() => onRemove(item.id)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="validate-actions">

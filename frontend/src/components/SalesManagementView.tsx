@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Category, Product, ProductManagementPayload } from '../types';
 import { createProduct, deleteProduct, fetchAllProductsForManagement, fetchCategories, updateProduct } from '../services/api';
+import { getCategoryMeta } from '../utils/categories';
 
 interface SalesManagementViewProps {
   onGoBack: () => void;
@@ -8,7 +9,6 @@ interface SalesManagementViewProps {
 }
 
 const QUICK_ICONS = ['🍺','🍻','🥃','🍷','🥂','🥤','🧃','☕','🫙','🪣','🥪','🥙','🍔','🍟','🛒'];
-const CATEGORY_LABELS: Record<string, string> = { drink:'Boissons', consigne:'Consigne', soft:'Soft', sandwich:'Sandwiches', food:'Sandwiches' };
 
 type FormState = ProductManagementPayload;
 const EMPTY_FORM: FormState = { name:'', icon:'🛒', customIcon:'', category:'drink', normalPrice:0, hhPrice:0, hhBonus:false, bonusParentProductId:null, displayOrder:0, active:true };
@@ -66,13 +66,13 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
     {success && <p className="sales-feedback success">{success}</p>}
     <button type="button" className="new-product-button" onClick={openNew}>+ Nouveau produit</button>
     {loading && <p>Chargement...</p>}
-    {!loading && <div className="sales-product-list">{sortedProducts.map(product => <article key={product.id} className="sales-product-item"><div className="sales-item-main"><span className="sales-product-icon">{product.icon}</span><div><strong>{product.name}</strong><p>{CATEGORY_LABELS[product.category] || product.category}</p></div></div><div className="sales-item-prices"><span>{product.normalPrice.toFixed(2)}€</span><span>HH {product.hhPrice.toFixed(2)}€</span></div><div className="sales-badges">{product.hhBonus && <span className="badge">Bonus HH</span>}<span className={`badge ${product.active ? 'active' : 'inactive'}`}>{product.active ? 'Actif' : 'Inactif'}</span>{product.bonusParentProductName && <span className="badge">Bonus de : {product.bonusParentProductName}</span>}</div><div className="sales-item-actions"><button type="button" onClick={()=>openEdit(product)}>Modifier</button><button type="button" onClick={()=>handleDeactivate(product.id)}>{product.active ? 'Désactiver' : 'Supprimer'}</button></div></article>)}</div>}
+    {!loading && <div className="sales-product-list">{sortedProducts.map(product => <article key={product.id} className="sales-product-item"><div className="sales-item-main"><span className="sales-product-icon">{product.icon}</span><div><strong>{product.name}</strong><p>{getCategoryMeta(product.category).label.replace(/^\S+\s/, '')}</p></div></div><div className="sales-item-prices"><span>{product.normalPrice.toFixed(2)}€</span><span>HH {product.hhPrice.toFixed(2)}€</span></div><div className="sales-badges">{product.hhBonus && <span className="badge">Bonus HH</span>}<span className={`badge ${product.active ? 'active' : 'inactive'}`}>{product.active ? 'Actif' : 'Inactif'}</span>{product.bonusParentProductName && <span className="badge">Bonus de : {product.bonusParentProductName}</span>}</div><div className="sales-item-actions"><button type="button" onClick={()=>openEdit(product)}>Modifier</button><button type="button" onClick={()=>handleDeactivate(product.id)}>{product.active ? 'Désactiver' : 'Supprimer'}</button></div></article>)}</div>}
     {isProductCardOpen && <div className="product-editor-overlay" onClick={resetForm}><article className="product-editor-card" onClick={e=>e.stopPropagation()}><h3>{isEditingId ? 'Modifier le produit' : 'Nouveau produit'}</h3>
       <label>Nom du produit<input placeholder="Ex : Bière 25cl" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></label>
       <label>Prix<div className="price-input"><input type="number" min="0" step="0.01" value={form.normalPrice} onChange={e=>setForm({...form,normalPrice:Number(e.target.value)})} /><span>€</span></div></label>
       <label>Prix Happy Hour<div className="price-input"><input type="number" min="0" step="0.01" value={form.hhPrice} onChange={e=>setForm({...form,hhPrice:Number(e.target.value)})} /><span>€</span></div></label>
       <label>Icône<div className="icon-grid">{QUICK_ICONS.map(icon => <button key={icon} type="button" className={form.icon===icon ? 'selected' : ''} onClick={()=>setForm({...form,icon,customIcon:''})}>{icon}</button>)}</div><input placeholder="Icône personnalisée (optionnel)" value={form.customIcon || ''} onChange={e=>setForm({...form,customIcon:e.target.value,icon:e.target.value || form.icon})} /></label>
-      <label>Catégorie<select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{categoryOptions.map(c => <option key={c.id} value={c.name}>{CATEGORY_LABELS[c.name] || c.name}</option>)}</select></label>
+      <label>Catégorie<select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{categoryOptions.map(c => <option key={c.id} value={c.name}>{getCategoryMeta(c.name).label.replace(/^\S+\s/, '')}</option>)}</select></label>
       <label className="toggle-row"><input type="checkbox" checked={form.hhBonus} onChange={e=>setForm({...form,hhBonus:e.target.checked,bonusParentProductId:e.target.checked ? form.bonusParentProductId : null})} /> Bonus HH</label>
       {form.hhBonus && <label>Rattaché au produit<select value={form.bonusParentProductId || ''} onChange={e=>setForm({...form,bonusParentProductId:e.target.value || null})}><option value="">Sélectionner un produit</option>{products.filter(p=>p.id!==isEditingId).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
       <label className="toggle-row"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})} /> Actif</label>
