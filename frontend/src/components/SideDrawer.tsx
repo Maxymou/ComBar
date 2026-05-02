@@ -9,6 +9,7 @@ type View =
   | 'prices'
   | 'sync'
   | 'bank'
+  | 'salesManagement'
   | 'settings';
 
 interface DrawerItem {
@@ -42,6 +43,7 @@ interface SideDrawerProps {
 
 const MAIN_MENU_ITEMS: DrawerItem[] = [
   { id: 'bank', label: 'Banque', icon: '🏦', enabled: true },
+  { id: 'salesManagement', label: 'Gestion des ventes', icon: '🧾', enabled: true },
   { id: 'settings', label: 'Paramètres', icon: '⚙️', enabled: false },
 ];
 
@@ -225,7 +227,7 @@ export default function SideDrawer({
                 </div>
                 <div className="drawer-build-info">v{buildVersion} · {buildTimestamp} · PWA {pwaEnabled ? 'ON' : 'OFF'}</div>
               </section>
-              {[MAIN_MENU_ITEMS[0]].map(item => (
+              {MAIN_MENU_ITEMS.slice(0, 2).map(item => (
                 <button
                   key={item.id}
                   type="button"
@@ -255,7 +257,7 @@ export default function SideDrawer({
                 <span className="side-drawer-item-icon" aria-hidden="true">🔐</span>
                 <span className="side-drawer-item-text">Administration</span>
               </button>
-              {[MAIN_MENU_ITEMS[1]].map(item => (
+              {MAIN_MENU_ITEMS.slice(2).map(item => (
                 <button
                   key={item.id}
                   type="button"

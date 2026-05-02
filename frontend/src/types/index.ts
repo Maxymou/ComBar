@@ -7,6 +7,24 @@ export interface Product {
   hhBonus: boolean;
   category: 'drink' | 'consigne' | 'food';
   displayOrder: number;
+  active?: boolean;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  displayOrder: number;
+}
+
+export interface ProductManagementPayload {
+  name: string;
+  icon: string;
+  normalPrice: number;
+  hhPrice: number;
+  hhBonus: boolean;
+  category: string;
+  displayOrder: number;
+  active: boolean;
 }
 
 export interface OrderLine {

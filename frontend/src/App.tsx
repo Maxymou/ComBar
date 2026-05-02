@@ -14,13 +14,14 @@ import Payment from './components/Payment';
 import PriceEditor from './components/PriceEditor';
 import PendingOrdersView from './components/PendingOrdersView';
 import BankView from './components/BankView';
+import SalesManagementView from './components/SalesManagementView';
 import SideDrawer, { View } from './components/SideDrawer';
 import { isDebugViewportEnabled } from './debug';
 import './App.css';
 
 export default function App() {
   const viewportDebug = isDebugViewportEnabled();
-  const { products } = useProducts();
+  const { products, refreshProducts } = useProducts();
   const { isOnline, pendingCount, syncState, lastSyncAt, refreshPending, forceSync } = useOnlineStatus();
 
   const [order, setOrder] = useState<Record<string, number>>({});
@@ -330,6 +331,16 @@ export default function App() {
                 setView('order');
                 setScreen('select');
               }}
+            />
+          )}
+
+          {view === 'salesManagement' && (
+            <SalesManagementView
+              onGoBack={() => {
+                setView('order');
+                setScreen('select');
+              }}
+              onProductsChanged={refreshProducts}
             />
           )}
 
