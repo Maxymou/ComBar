@@ -13,6 +13,7 @@ import Summary from './components/Summary';
 import Payment from './components/Payment';
 import PriceEditor from './components/PriceEditor';
 import PendingOrdersView from './components/PendingOrdersView';
+import BankView from './components/BankView';
 import SideDrawer, { View } from './components/SideDrawer';
 import { isDebugViewportEnabled } from './debug';
 import './App.css';
@@ -315,7 +316,16 @@ export default function App() {
             />
           )}
 
-          {view !== 'order' && view !== 'prices' && view !== 'sync' && (
+          {view === 'bank' && (
+            <BankView
+              onGoBack={() => {
+                setView('order');
+                setScreen('select');
+              }}
+            />
+          )}
+
+          {view !== 'order' && view !== 'prices' && view !== 'sync' && view !== 'bank' && (
             <div className="placeholder-view">
               <div className="placeholder-title">Écran à venir</div>
               <div className="placeholder-text">Cette section sera disponible prochainement.</div>
