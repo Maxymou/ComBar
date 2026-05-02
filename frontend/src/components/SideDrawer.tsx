@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { SyncState } from '../hooks/useOnlineStatus';
+import { PresenceDevice } from '../types';
+import OnlineDevices from './OnlineDevices';
 
 type View =
   | 'order'
@@ -21,6 +24,11 @@ interface SideDrawerProps {
   isOnline: boolean;
   pendingCount: number;
   syncState: SyncState;
+  onlineUsers: number;
+  connectedDevices: PresenceDevice[];
+  recentlyActiveDevices: PresenceDevice[];
+  localDeviceName: string;
+  onRenameTerminal: (nextName: string) => Promise<void>;
   buildVersion: string;
   buildTimestamp: string;
   pwaEnabled: boolean;
@@ -37,6 +45,24 @@ const MAIN_MENU_ITEMS: DrawerItem[] = [
   { id: 'settings', label: 'Paramètres', icon: '⚙️', enabled: false },
 ];
 
+function formatLastSeen(isoDate: string): string {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return 'dernière activité inconnue';
+  }
+
+  const now = Date.now();
+  const diffSeconds = Math.floor((now - date.getTime()) / 1000);
+  if (diffSeconds < 60) return 'à l’instant';
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `il y a ${diffMinutes} min`;
+  }
+
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 const ADMIN_MENU_ITEMS: DrawerItem[] = [
   { id: 'prices', label: 'Gestion des prix', icon: '💰', enabled: true },
   { id: 'sync', label: 'Commandes en attente', icon: '🔁', enabled: true },
@@ -48,6 +74,11 @@ export default function SideDrawer({
   isOnline,
   pendingCount,
   syncState,
+  onlineUsers,
+  connectedDevices,
+  recentlyActiveDevices,
+  localDeviceName,
+  onRenameTerminal,
   buildVersion,
   buildTimestamp,
   pwaEnabled,
@@ -59,6 +90,9 @@ export default function SideDrawer({
   onApplyUpdate,
 }: SideDrawerProps) {
   const [drawerMenu, setDrawerMenu] = useState<'main' | 'administration'>('main');
+  const [isDevicesPopoverOpen, setIsDevicesPopoverOpen] = useState(false);
+  const [renameDraft, setRenameDraft] = useState(localDeviceName);
+  const [isRenaming, setIsRenaming] = useState(false);
 
   const syncClassName =
     !isOnline || syncState === 'offline'
@@ -76,6 +110,36 @@ export default function SideDrawer({
     if (pendingCount > 0 || syncState === 'pending') return `${pendingCount} en attente`;
     return 'Synchronisé';
   }, [isOnline, pendingCount, syncState]);
+  const canOpenDevicesPopover = isOnline;
+
+  useEffect(() => {
+    setRenameDraft(localDeviceName);
+  }, [localDeviceName]);
+
+  useEffect(() => {
+    if (!isDevicesPopoverOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsDevicesPopoverOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isDevicesPopoverOpen]);
+
+  const handleRename = async () => {
+    if (isRenaming) return;
+    setIsRenaming(true);
+    try {
+      await onRenameTerminal(renameDraft);
+    } finally {
+      setIsRenaming(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -130,10 +194,23 @@ export default function SideDrawer({
             <>
               <section className="drawer-status-card" aria-label="État de l’application">
                 <div className="drawer-status-title">État de l’application</div>
-                <div className="drawer-sync-row">
+                <button
+                  type="button"
+                  className={`drawer-sync-row drawer-sync-trigger ${canOpenDevicesPopover ? 'clickable' : ''}`}
+                  onClick={() => {
+                    if (!canOpenDevicesPopover) return;
+                    setIsDevicesPopoverOpen(true);
+                  }}
+                  disabled={!canOpenDevicesPopover}
+                  aria-haspopup={canOpenDevicesPopover ? 'dialog' : undefined}
+                  aria-expanded={canOpenDevicesPopover ? isDevicesPopoverOpen : undefined}
+                >
                   <span className={`drawer-sync-dot ${syncClassName}`} aria-hidden="true" />
                   <span className="drawer-sync-text">{syncLabel}</span>
-                </div>
+                  {canOpenDevicesPopover && (
+                    <span className="drawer-sync-more">Terminaux</span>
+                  )}
+                </button>
                 <div className="drawer-status-actions">
                   {isOnline && (
                     <button type="button" className="drawer-status-btn" onClick={onForceSync}>
@@ -221,6 +298,54 @@ export default function SideDrawer({
           )}
         </nav>
       </aside>
+      {isDevicesPopoverOpen && createPortal(
+        <div className="terminal-overlay" onClick={() => setIsDevicesPopoverOpen(false)}>
+          <div
+            className="terminal-popover connected-devices-popover"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Terminaux connectés"
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="connected-devices-title">Terminaux</div>
+            <div className="connected-devices-summary">{onlineUsers} connectés · {syncLabel}</div>
+
+            <div className="terminal-rename-row">
+              <input
+                className="terminal-rename-input"
+                value={renameDraft}
+                maxLength={12}
+                onChange={event => setRenameDraft(event.target.value)}
+                placeholder="Nom du terminal"
+                aria-label="Nom du terminal"
+              />
+              <button className="terminal-rename-btn" onClick={handleRename} disabled={isRenaming} type="button">
+                {isRenaming ? '...' : 'Renommer'}
+              </button>
+            </div>
+
+            <div className="devices-section-title">Connectés</div>
+            <OnlineDevices devices={connectedDevices} />
+
+            <div className="devices-section-title">Actifs récemment</div>
+            {recentlyActiveDevices.length > 0 ? (
+              <ul className="connected-devices-list">
+                {recentlyActiveDevices.map(device => (
+                  <li className="connected-device-row" key={device.deviceId}>
+                    <span className="connected-device-main">
+                      <span className="connected-device-name">{device.deviceName || 'Terminal'}</span>
+                      <span className="connected-device-time">{formatLastSeen(device.lastSeenAt)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="connected-devices-fallback">Aucune activité récente</div>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
     </>
   );
 }
