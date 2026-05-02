@@ -413,14 +413,33 @@ body::before{
 
 /* ── GRID ── */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(3,1fr);
+  display: flex;
+  flex-direction: column;
   gap: 7px;
   flex-shrink: 0;
 }
-.grid.drinks    { margin-bottom: 8px; }
-.grid.consignes { margin-bottom: 8px; }
-.grid.food      { grid-template-columns: repeat(2,1fr); margin-bottom: 10px; }
+
+.product-row {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+}
+
+.product-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-row-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.product-row-1 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-row-1 > * {
+  grid-column: 1 / 2;
+}
 
 /* ── CARD ── */
 .card {
@@ -1488,3 +1507,7 @@ body::before{
 .toggle-row { flex-direction:row !important; align-items:center; gap:8px; }
 .sales-feedback.error { color:#ff8c8c; }
 .sales-feedback.success { color:#8dffb0; }
+
+.sales-category-section { display:flex; flex-direction:column; gap:10px; }
+.sales-category-section h3 { font-size:1rem; color:#f5f5f5; margin-top:8px; }
+.sales-order-number { min-width:24px; color:#bdbdbd; font-weight:700; }

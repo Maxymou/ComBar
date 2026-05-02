@@ -18,6 +18,14 @@ function getPrice(item: Product, isHH: boolean, prices: Record<string, number>):
   return prices[key] ?? (isHH ? item.hhPrice : item.normalPrice);
 }
 
+function chunkProducts(items: Product[], size = 3): Product[][] {
+  const chunks: Product[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 export default function ProductGrid({ products, order, isHH, prices, onAdd, onRemove, onValidate, onCancel }: ProductGridProps) {
   const groupedProducts = products.reduce<Record<string, Product[]>>((acc, product) => {
     const key = normalizeCategory(product.category);
@@ -27,7 +35,15 @@ export default function ProductGrid({ products, order, isHH, prices, onAdd, onRe
   }, {});
 
   const groups = Object.entries(groupedProducts)
-    .map(([key, items]) => ({ key, items, ...getCategoryMeta(key) }))
+    .map(([key, items]) => ({
+      key,
+      items: [...items].sort((a, b) => {
+        const orderA = Number.isFinite(a.displayOrder) ? a.displayOrder : 9999;
+        const orderB = Number.isFinite(b.displayOrder) ? b.displayOrder : 9999;
+        return orderA - orderB || a.name.localeCompare(b.name);
+      }),
+      ...getCategoryMeta(key),
+    }))
     .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
 
   const totalItems = Object.values(order).reduce((s, v) => s + v, 0);
@@ -39,16 +55,20 @@ export default function ProductGrid({ products, order, isHH, prices, onAdd, onRe
           <div key={group.key}>
             <div className="sec">{group.label.replace(/^\S+\s/, '')}</div>
             <div className={`grid ${group.key}`}>
-              {group.items.map(item => (
-                <ProductCard
-                  key={item.id}
-                  item={item}
-                  qty={order[item.id] || 0}
-                  price={getPrice(item, normalizeCategory(item.category) === 'drink' ? isHH : false, prices)}
-                  isHH={normalizeCategory(item.category) === 'drink' ? isHH : false}
-                  onAdd={() => onAdd(item.id)}
-                  onRemove={() => onRemove(item.id)}
-                />
+              {chunkProducts(group.items).map((row, rowIndex) => (
+                <div key={`${group.key}-${rowIndex}`} className={`product-row product-row-${row.length}`}>
+                  {row.map(item => (
+                    <ProductCard
+                      key={item.id}
+                      item={item}
+                      qty={order[item.id] || 0}
+                      price={getPrice(item, normalizeCategory(item.category) === 'drink' ? isHH : false, prices)}
+                      isHH={normalizeCategory(item.category) === 'drink' ? isHH : false}
+                      onAdd={() => onAdd(item.id)}
+                      onRemove={() => onRemove(item.id)}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
           </div>

@@ -88,6 +88,42 @@ router.put('/api/products/:id', async (req, res) => {
   } catch (err) { logger.error({ err, productId }, 'Failed to update product'); res.status(500).json({ error: 'Failed to update product' }); }
 });
 
+
+router.put('/api/products/reorder', async (req: Request, res: Response) => {
+  const { items } = req.body ?? {};
+  if (!Array.isArray(items)) return res.status(400).json({ error: 'Invalid payload' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const item of items) {
+      if (!item || typeof item.id !== 'string' || Number.isNaN(Number(item.displayOrder))) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Invalid item payload' });
+      }
+
+      const exists = await client.query('SELECT 1 FROM products WHERE id = $1', [item.id]);
+      if (!exists.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: `Product not found: ${item.id}` });
+      }
+
+      await client.query('UPDATE products SET display_order = $1 WHERE id = $2', [Number(item.displayOrder), item.id]);
+    }
+
+    await client.query('COMMIT');
+    (req.app.locals.realtimeServer as RealtimeServer | undefined)?.broadcast({ type: 'STATE_UPDATE', payload: { updatedAt: new Date().toISOString() } });
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    logger.error({ err }, 'Failed to reorder products');
+    res.status(500).json({ error: 'Failed to reorder products' });
+  } finally {
+    client.release();
+  }
+});
+
 router.delete('/api/products/:id', async (req, res) => { const productId = String(req.params.id || '').trim(); try { await pool.query('UPDATE products SET active = false WHERE id = $1', [productId]); (req.app.locals.realtimeServer as RealtimeServer | undefined)?.broadcast({ type: 'STATE_UPDATE', payload: { updatedAt: new Date().toISOString() } }); res.json({ ok: true }); } catch (err) { logger.error({ err, productId }, 'Failed to deactivate product'); res.status(500).json({ error: 'Failed to deactivate product' }); } });
 
 export default router;
