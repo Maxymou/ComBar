@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Product } from '../types';
 import { DEFAULT_PRODUCTS } from '../data/defaultCatalog';
 import { fetchProducts } from '../services/api';
@@ -8,37 +8,28 @@ export function useProducts() {
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
 
-    async function load() {
-      // 1. Try local first (instant)
-      try {
-        const local = await getLocalProducts();
-        if (!cancelled && local.length > 0) {
-          setProducts(local);
-        }
-      } catch {
-        // IndexedDB error — use defaults
+    try {
+      const local = await getLocalProducts();
+      if (local.length > 0) setProducts(local);
+    } catch {}
+
+    try {
+      const remote = await fetchProducts();
+      if (remote.length > 0) {
+        setProducts(remote);
+        await saveProducts(remote);
       }
+    } catch {}
 
-      // 2. Try API (network)
-      try {
-        const remote = await fetchProducts();
-        if (!cancelled && remote.length > 0) {
-          setProducts(remote);
-          await saveProducts(remote);
-        }
-      } catch {
-        // Offline — local or defaults already set
-      }
-
-      if (!cancelled) setLoading(false);
-    }
-
-    load();
-    return () => { cancelled = true; };
+    setLoading(false);
   }, []);
 
-  return { products, loading };
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
+
+  return { products, loading, refreshProducts: loadProducts };
 }

@@ -1,4 +1,4 @@
-import { Product, PendingOrder, RealtimeState } from '../types';
+import { Product, PendingOrder, RealtimeState, Category, ProductManagementPayload } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -103,4 +103,42 @@ export async function renameTerminal(deviceId: string, deviceName: string): Prom
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+
+export async function fetchAllProductsForManagement(): Promise<Product[]> {
+  const res = await fetch(`${API_BASE}/api/products/manage`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function fetchCategories(): Promise<Category[]> {
+  const res = await fetch(`${API_BASE}/api/categories`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function createProduct(payload: ProductManagementPayload): Promise<Product> {
+  const res = await fetch(`${API_BASE}/api/products`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function updateProduct(id: string, payload: ProductManagementPayload): Promise<Product> {
+  const res = await fetch(`${API_BASE}/api/products/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/products/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }

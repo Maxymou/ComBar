@@ -1442,3 +1442,19 @@ body::before{
   padding: 10px 14px;
   font-size: 0.85rem;
 }
+
+.sales-management-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px;
+  overflow-x: hidden;
+}
+.sales-form-card,.sales-product-item { background:#171717; border:1px solid #313131; border-radius:12px; padding:10px; }
+.sales-form-grid { display:grid; grid-template-columns:1fr; gap:8px; }
+.sales-form-grid input,.sales-form-grid select { min-height:40px; border-radius:8px; border:1px solid #333; background:#0f0f0f; color:#fff; padding:8px; }
+.sales-form-actions,.sales-item-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.sales-form-actions button,.sales-item-actions button { min-height:40px; padding:8px 12px; border-radius:999px; border:1px solid #333; background:#232323; color:#fff; }
+.sales-product-list { display:flex; flex-direction:column; gap:8px; padding-bottom:20px; }
+.sales-feedback.error { color:#ff8c8c; }
+.sales-feedback.success { color:#8dffb0; }
