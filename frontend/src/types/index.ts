@@ -5,7 +5,9 @@ export interface Product {
   normalPrice: number;
   hhPrice: number;
   hhBonus: boolean;
-  category: 'drink' | 'consigne' | 'food';
+  category: 'drink' | 'consigne' | 'food' | 'soft' | 'sandwich';
+  bonusParentProductId?: string | null;
+  bonusParentProductName?: string | null;
   displayOrder: number;
   active?: boolean;
 }
@@ -25,6 +27,8 @@ export interface ProductManagementPayload {
   category: string;
   displayOrder: number;
   active: boolean;
+  bonusParentProductId?: string | null;
+  customIcon?: string;
 }
 
 export interface OrderLine {

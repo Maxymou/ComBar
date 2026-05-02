@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS products (
   hh_bonus BOOLEAN NOT NULL DEFAULT false,
   category_id INT REFERENCES categories(id),
   display_order INT NOT NULL DEFAULT 0,
-  active BOOLEAN NOT NULL DEFAULT true
+  active BOOLEAN NOT NULL DEFAULT true,
+  bonus_parent_product_id VARCHAR(50) REFERENCES products(id)
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -62,27 +63,32 @@ DO $$ BEGIN
   END IF;
 END $$;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_priced BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS bonus_parent_product_id VARCHAR(50) REFERENCES products(id);
 `;
 
 const SEED_SQL = `
 INSERT INTO categories (id, name, display_order) VALUES
   (1, 'drink', 0),
   (2, 'consigne', 1),
-  (3, 'food', 2)
+  (3, 'food', 2),
+  (4, 'soft', 3),
+  (5, 'sandwich', 4)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO products (id, name, icon, normal_price, hh_price, hh_bonus, category_id, display_order, active) VALUES
-  ('biere25',        'Bière 25cl',  '🍺', 2,  2,  true,  1, 0, true),
-  ('biere50',        'Bière 50cl',  '🍺', 4,  2,  true,  1, 1, true),
-  ('pichet',         'Pichet 1,5L', '🍻', 10, 10, true,  1, 2, true),
-  ('shooter',        'Shooter',     '🥃', 1,  1,  false, 1, 3, true),
-  ('vinRouge',       'Vin Rouge',   '🍷', 2,  2,  false, 1, 4, true),
-  ('vinBlanc',       'Vin Blanc',   '🥂', 2,  2,  false, 1, 5, true),
-  ('consigne25',     'Csg. 25cl',   '🫙', 1,  1,  false, 2, 0, true),
-  ('consigne50',     'Csg. 50cl',   '🫙', 2,  2,  false, 2, 1, true),
-  ('consignePichet', 'Csg. Pichet', '🪣', 5,  5,  false, 2, 2, true),
-  ('kebab',          'Kebab',       '🥙', 5,  5,  false, 3, 0, true),
-  ('vege',           'Végé',        '🥗', 5,  5,  false, 3, 1, true)
+INSERT INTO products (id, name, icon, normal_price, hh_price, hh_bonus, category_id, display_order, active, bonus_parent_product_id) VALUES
+  ('biere25',        'Bière 25cl',   '🍺', 2,  2,  true,  1, 0, true, 'biere50'),
+  ('biere50',        'Bière 50cl',   '🍺', 4,  2,  true,  1, 1, true, null),
+  ('pichet',         'Pichet 1,5L',  '🍻', 10, 10, true,  1, 2, true, null),
+  ('shooter',        'Shooter',      '🥃', 1,  1,  false, 1, 3, true, null),
+  ('vinRouge',       'Vin Rouge',    '🍷', 2,  2,  false, 1, 4, true, null),
+  ('vinBlanc',       'Vin Blanc',    '🥂', 2,  2,  false, 1, 5, true, null),
+  ('consigne25',     'Csg. 25cl',    '🫙', 1,  1,  false, 2, 0, true, null),
+  ('consigne50',     'Csg. 50cl',    '🫙', 2,  2,  false, 2, 1, true, null),
+  ('consignePichet', 'Csg. Pichet',  '🪣', 5,  5,  false, 2, 2, true, null),
+  ('kebab',          'Kebab',        '🥙', 5,  5,  false, 3, 0, true, null),
+  ('vege',           'Végé',         '🥗', 5,  5,  false, 3, 1, true, null),
+  ('coca',           'Coca',         '🥤', 2,  2,  false, 4, 0, true, null),
+  ('jambonBeurre',   'Jambon beurre','🥪', 5,  5,  false, 5, 0, true, null)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   icon = EXCLUDED.icon,
@@ -91,7 +97,8 @@ ON CONFLICT (id) DO UPDATE SET
   hh_bonus = EXCLUDED.hh_bonus,
   category_id = EXCLUDED.category_id,
   display_order = EXCLUDED.display_order,
-  active = EXCLUDED.active;
+  active = EXCLUDED.active,
+  bonus_parent_product_id = EXCLUDED.bonus_parent_product_id;
 
 
 INSERT INTO app_settings (key, value) VALUES

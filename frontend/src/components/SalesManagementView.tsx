@@ -1,30 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Category, Product, ProductManagementPayload } from '../types';
-import {
-  createProduct,
-  deleteProduct,
-  fetchAllProductsForManagement,
-  fetchCategories,
-  updateProduct,
-} from '../services/api';
+import { createProduct, deleteProduct, fetchAllProductsForManagement, fetchCategories, updateProduct } from '../services/api';
 
 interface SalesManagementViewProps {
   onGoBack: () => void;
   onProductsChanged: () => Promise<void> | void;
 }
 
-type FormState = ProductManagementPayload;
+const QUICK_ICONS = ['🍺','🍻','🥃','🍷','🥂','🥤','🧃','☕','🫙','🪣','🥪','🥙','🍔','🍟','🛒'];
+const CATEGORY_LABELS: Record<string, string> = { drink:'Boissons', consigne:'Consigne', soft:'Soft', sandwich:'Sandwiches', food:'Sandwiches' };
 
-const EMPTY_FORM: FormState = {
-  name: '',
-  icon: '🛒',
-  category: '',
-  normalPrice: 0,
-  hhPrice: 0,
-  hhBonus: false,
-  displayOrder: 0,
-  active: true,
-};
+type FormState = ProductManagementPayload;
+const EMPTY_FORM: FormState = { name:'', icon:'🛒', customIcon:'', category:'drink', normalPrice:0, hhPrice:0, hhBonus:false, bonusParentProductId:null, displayOrder:0, active:true };
 
 export default function SalesManagementView({ onGoBack, onProductsChanged }: SalesManagementViewProps) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -33,109 +20,63 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isEditingId, setIsEditingId] = useState<string | null>(null);
+  const [isProductCardOpen, setIsProductCardOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
-  const loadData = async () => {
-    setLoading(true); setError(null);
-    try {
-      const [productsData, categoriesData] = await Promise.all([
-        fetchAllProductsForManagement(),
-        fetchCategories(),
-      ]);
-      setProducts(productsData);
-      setCategories(categoriesData);
-      if (!form.category && categoriesData.length > 0) {
-        setForm(prev => ({ ...prev, category: categoriesData[0].name }));
-      }
-    } catch {
-      setError('Impossible de charger les produits.');
-    } finally { setLoading(false); }
-  };
-
+  const loadData = async () => { setLoading(true); setError(null); try { const [p,c] = await Promise.all([fetchAllProductsForManagement(), fetchCategories()]); setProducts(p); setCategories(c); } catch { setError('Impossible de charger les produits.'); } finally { setLoading(false);} };
   useEffect(() => { void loadData(); }, []);
 
-  const sortedProducts = useMemo(() => [...products].sort((a, b) => {
-    if (a.category === b.category) return a.displayOrder - b.displayOrder;
-    return a.category.localeCompare(b.category);
-  }), [products]);
+  const sortedProducts = useMemo(() => [...products].sort((a,b)=> a.displayOrder===b.displayOrder ? a.name.localeCompare(b.name) : a.displayOrder-b.displayOrder), [products]);
+  const categoryOptions = useMemo(() => categories.filter(c => ['drink','consigne','soft','sandwich','food'].includes(c.name)), [categories]);
 
-  const resetForm = () => {
-    setIsEditingId(null);
-    setForm({ ...EMPTY_FORM, category: categories[0]?.name || '' });
+  const resetForm = () => { setIsEditingId(null); setIsProductCardOpen(false); setForm({ ...EMPTY_FORM, category: categoryOptions[0]?.name || 'drink' }); };
+  const openNew = () => { setIsEditingId(null); setError(null); setForm({ ...EMPTY_FORM, category: categoryOptions[0]?.name || 'drink' }); setIsProductCardOpen(true); };
+  const openEdit = (product: Product) => { setIsEditingId(product.id); setError(null); setForm({ ...product, customIcon:'', bonusParentProductId: product.bonusParentProductId ?? null, active: product.active ?? true }); setIsProductCardOpen(true); };
+
+  const validate = (): string | null => {
+    if (!form.name.trim()) return 'Le nom du produit est obligatoire.';
+    if (!form.icon.trim()) return 'Veuillez sélectionner une icône.';
+    if (!form.category) return 'La catégorie est obligatoire.';
+    if (Number.isNaN(Number(form.normalPrice)) || Number(form.normalPrice) < 0) return 'Le prix doit être valide (>= 0).';
+    if (Number.isNaN(Number(form.hhPrice)) || Number(form.hhPrice) < 0) return 'Le prix Happy Hour doit être valide (>= 0).';
+    if (form.hhBonus && !form.bonusParentProductId) return 'Sélectionnez le produit rattaché pour le bonus HH.';
+    if (form.hhBonus && isEditingId && form.bonusParentProductId === isEditingId) return 'Un produit ne peut pas être rattaché à lui-même.';
+    return null;
   };
 
   const submitForm = async () => {
     setError(null); setSuccess(null);
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
     try {
-      if (isEditingId) {
-        await updateProduct(isEditingId, form);
-        setSuccess('Produit modifié.');
-      } else {
-        await createProduct(form);
-        setSuccess('Produit ajouté.');
-      }
-      resetForm();
-      await loadData();
-      await onProductsChanged();
-    } catch {
-      setError('Erreur lors de l’enregistrement du produit.');
-    }
+      const payload = { ...form, name: form.name.trim(), icon: form.customIcon?.trim() || form.icon, bonusParentProductId: form.hhBonus ? form.bonusParentProductId : null };
+      if (isEditingId) { await updateProduct(isEditingId, payload); setSuccess('Produit modifié.'); } else { await createProduct(payload); setSuccess('Produit ajouté.'); }
+      resetForm(); await loadData(); await onProductsChanged();
+    } catch { setError('Erreur lors de l’enregistrement du produit.'); }
   };
 
-  const handleDeactivate = async (id: string) => {
-    if (!window.confirm('Supprimer ce produit de la vente ?')) return;
-    setError(null); setSuccess(null);
-    try {
-      await deleteProduct(id);
-      setSuccess('Produit désactivé.');
-      await loadData();
-      await onProductsChanged();
-    } catch {
-      setError('Erreur lors de la suppression.');
-    }
-  };
+  const handleDeactivate = async (id: string) => { if (!window.confirm('Désactiver ce produit ?')) return; setError(null); setSuccess(null); try { await deleteProduct(id); setSuccess('Produit désactivé.'); await loadData(); await onProductsChanged(); } catch { setError('Erreur lors de la désactivation.'); } };
 
-  return (
-    <section className="sales-management-view">
-      <button type="button" className="placeholder-back-btn" onClick={onGoBack}>← Retour commande</button>
-      <h2>Gestion des ventes</h2>
-      {loading && <p>Chargement...</p>}
-      {error && <p className="sales-feedback error">{error}</p>}
-      {success && <p className="sales-feedback success">{success}</p>}
-
-      <div className="sales-form-card">
-        <h3>{isEditingId ? 'Modifier un produit' : 'Ajouter un produit'}</h3>
-        <div className="sales-form-grid">
-          <input placeholder="Nom" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          <input placeholder="Icône" value={form.icon} onChange={e => setForm({ ...form, icon: e.target.value })} />
-          <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-          </select>
-          <input type="number" min="0" step="0.01" value={form.normalPrice} onChange={e => setForm({ ...form, normalPrice: Number(e.target.value) })} />
-          <input type="number" min="0" step="0.01" value={form.hhPrice} onChange={e => setForm({ ...form, hhPrice: Number(e.target.value) })} />
-          <input type="number" min="0" step="1" value={form.displayOrder} onChange={e => setForm({ ...form, displayOrder: Number(e.target.value) })} />
-          <label><input type="checkbox" checked={form.hhBonus} onChange={e => setForm({ ...form, hhBonus: e.target.checked })} /> Bonus HH</label>
-          <label><input type="checkbox" checked={form.active} onChange={e => setForm({ ...form, active: e.target.checked })} /> Actif</label>
-        </div>
-        <div className="sales-form-actions">
-          <button type="button" onClick={submitForm}>Enregistrer</button>
-          <button type="button" onClick={resetForm}>Annuler</button>
-        </div>
-      </div>
-
-      {!loading && sortedProducts.length === 0 && <p>Aucun produit disponible.</p>}
-      <div className="sales-product-list">
-        {sortedProducts.map(product => (
-          <article key={product.id} className="sales-product-item">
-            <div>{product.icon} <strong>{product.name}</strong> · {product.category}</div>
-            <div>{product.normalPrice.toFixed(2)}€ / HH {product.hhPrice.toFixed(2)}€ · Bonus {product.hhBonus ? 'Oui' : 'Non'} · Ordre {product.displayOrder} · {product.active ? 'Actif' : 'Inactif'}</div>
-            <div className="sales-item-actions">
-              <button type="button" onClick={() => { setIsEditingId(product.id); setForm({ ...product, active: product.active ?? true }); }}>Modifier</button>
-              <button type="button" onClick={() => handleDeactivate(product.id)}>Supprimer</button>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
+  return <section className="sales-management-view">
+    <header className="sales-management-header">
+      <button type="button" className="placeholder-back-btn" onClick={onGoBack}>← Retour</button>
+      <h2>Gestion des ventes</h2><p>Produits disponibles à la vente</p>
+    </header>
+    {error && <p className="sales-feedback error">{error}</p>}
+    {success && <p className="sales-feedback success">{success}</p>}
+    <button type="button" className="new-product-button" onClick={openNew}>+ Nouveau produit</button>
+    {loading && <p>Chargement...</p>}
+    {!loading && <div className="sales-product-list">{sortedProducts.map(product => <article key={product.id} className="sales-product-item"><div className="sales-item-main"><span className="sales-product-icon">{product.icon}</span><div><strong>{product.name}</strong><p>{CATEGORY_LABELS[product.category] || product.category}</p></div></div><div className="sales-item-prices"><span>{product.normalPrice.toFixed(2)}€</span><span>HH {product.hhPrice.toFixed(2)}€</span></div><div className="sales-badges">{product.hhBonus && <span className="badge">Bonus HH</span>}<span className={`badge ${product.active ? 'active' : 'inactive'}`}>{product.active ? 'Actif' : 'Inactif'}</span>{product.bonusParentProductName && <span className="badge">Bonus de : {product.bonusParentProductName}</span>}</div><div className="sales-item-actions"><button type="button" onClick={()=>openEdit(product)}>Modifier</button><button type="button" onClick={()=>handleDeactivate(product.id)}>{product.active ? 'Désactiver' : 'Supprimer'}</button></div></article>)}</div>}
+    {isProductCardOpen && <div className="product-editor-overlay" onClick={resetForm}><article className="product-editor-card" onClick={e=>e.stopPropagation()}><h3>{isEditingId ? 'Modifier le produit' : 'Nouveau produit'}</h3>
+      <label>Nom du produit<input placeholder="Ex : Bière 25cl" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></label>
+      <label>Prix<div className="price-input"><input type="number" min="0" step="0.01" value={form.normalPrice} onChange={e=>setForm({...form,normalPrice:Number(e.target.value)})} /><span>€</span></div></label>
+      <label>Prix Happy Hour<div className="price-input"><input type="number" min="0" step="0.01" value={form.hhPrice} onChange={e=>setForm({...form,hhPrice:Number(e.target.value)})} /><span>€</span></div></label>
+      <label>Icône<div className="icon-grid">{QUICK_ICONS.map(icon => <button key={icon} type="button" className={form.icon===icon ? 'selected' : ''} onClick={()=>setForm({...form,icon,customIcon:''})}>{icon}</button>)}</div><input placeholder="Icône personnalisée (optionnel)" value={form.customIcon || ''} onChange={e=>setForm({...form,customIcon:e.target.value,icon:e.target.value || form.icon})} /></label>
+      <label>Catégorie<select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{categoryOptions.map(c => <option key={c.id} value={c.name}>{CATEGORY_LABELS[c.name] || c.name}</option>)}</select></label>
+      <label className="toggle-row"><input type="checkbox" checked={form.hhBonus} onChange={e=>setForm({...form,hhBonus:e.target.checked,bonusParentProductId:e.target.checked ? form.bonusParentProductId : null})} /> Bonus HH</label>
+      {form.hhBonus && <label>Rattaché au produit<select value={form.bonusParentProductId || ''} onChange={e=>setForm({...form,bonusParentProductId:e.target.value || null})}><option value="">Sélectionner un produit</option>{products.filter(p=>p.id!==isEditingId).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
+      <label className="toggle-row"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})} /> Actif</label>
+      <div className="sales-form-actions"><button type="button" onClick={submitForm}>Enregistrer</button><button type="button" onClick={resetForm}>Annuler</button></div>
+    </article></div>}
+  </section>;
 }
