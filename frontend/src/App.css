@@ -1233,6 +1233,28 @@ body::before{
   flex-direction: column;
   gap: 8px;
 }
+.side-drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.side-drawer-section-title {
+  margin: 8px 4px 2px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #FFE000;
+  opacity: 0.9;
+}
+.side-drawer-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 1px solid #333;
+  margin-left: 4px;
+}
 .side-drawer-item {
   display: flex;
   align-items: center;
@@ -1245,6 +1267,10 @@ body::before{
   padding: 14px 12px;
   min-height: 50px;
   text-align: left;
+}
+.side-drawer-subitem {
+  min-height: 46px;
+  padding: 12px 10px;
 }
 .side-drawer-item.active {
   border-color: #f3b63a;
