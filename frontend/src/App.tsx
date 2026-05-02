@@ -41,9 +41,17 @@ export default function App() {
   }, []);
 
   const {
-    prices, isHH,
-    setPrices, setIsHH,
-    sendOrQueuePricesUpdate, sendOrQueueHappyHourUpdate,
+    prices,
+    isHH,
+    onlineUsers,
+    connectedDevices,
+    recentlyActiveDevices,
+    identity,
+    setPrices,
+    setIsHH,
+    sendOrQueuePricesUpdate,
+    sendOrQueueHappyHourUpdate,
+    handleRenameTerminal,
   } = useRealtimeState({
     products,
     isOnline,
@@ -212,6 +220,11 @@ export default function App() {
         isOnline={isOnline}
         pendingCount={pendingCount}
         syncState={syncState}
+        onlineUsers={onlineUsers}
+        connectedDevices={connectedDevices}
+        recentlyActiveDevices={recentlyActiveDevices}
+        localDeviceName={identity.deviceName}
+        onRenameTerminal={handleRenameTerminal}
         buildVersion={buildVersion}
         buildTimestamp={buildTimestamp}
         pwaEnabled={pwaEnabled}

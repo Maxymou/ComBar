@@ -1280,6 +1280,33 @@ body::before{
   margin-bottom: 10px;
 }
 
+.drawer-sync-trigger {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drawer-sync-trigger:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.drawer-sync-trigger.clickable {
+  padding: 8px;
+  margin: 0 0 10px;
+  border-radius: 10px;
+  background: #151515;
+  border: 1px solid #2a2a2a;
+}
+
+.drawer-sync-trigger.clickable:active {
+  transform: scale(0.98);
+}
+
 .drawer-sync-dot {
   width: 8px;
   height: 8px;
@@ -1295,6 +1322,14 @@ body::before{
   font-size: 0.72rem;
   color: #cfcfcf;
   font-weight: 600;
+}
+
+.drawer-sync-more {
+  margin-left: auto;
+  font-size: 0.56rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .drawer-status-actions {
