@@ -57,16 +57,15 @@ export function useOnlineStatus() {
       setIsOnline(false);
       setSyncState('offline');
     };
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        void doSync();
+      }
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
-    const intervalMs = Number(import.meta.env.VITE_SYNC_INTERVAL_MS || '30000');
-    const interval = window.setInterval(() => {
-      if (navigator.onLine) {
-        void doSync();
-      }
-    }, intervalMs);
+    document.addEventListener('visibilitychange', handleVisible);
 
     void checkPending();
     if (navigator.onLine) {
@@ -76,9 +75,27 @@ export function useOnlineStatus() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisible);
     };
   }, [doSync, checkPending]);
+
+  // Adaptive retry: only schedule a follow-up sync when there are pending orders
+  // or when the last attempt errored. Avoids the constant 30s polling.
+  useEffect(() => {
+    if (!isOnline) return;
+    if (syncState !== 'pending' && syncState !== 'error') return;
+
+    const baseMs = Number(import.meta.env.VITE_SYNC_INTERVAL_MS || '30000');
+    const delay = syncState === 'error' ? Math.min(baseMs * 2, 120000) : baseMs;
+
+    const timer = window.setTimeout(() => {
+      if (navigator.onLine) {
+        void doSync();
+      }
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [isOnline, syncState, pendingCount, doSync]);
 
   return {
     isOnline,

@@ -1,5 +1,10 @@
-export const RECENTLY_ACTIVE_WINDOW_MS = 15 * 60 * 1000;
-const SESSION_STALE_TIMEOUT_MS = 75 * 1000;
+import { config } from '../config';
+import pool from '../db/pool';
+import { logger } from '../logger';
+
+export const RECENTLY_ACTIVE_WINDOW_MS = config.presence.recentlyActiveWindowMs;
+const SESSION_STALE_TIMEOUT_MS = config.presence.sessionStaleTimeoutMs;
+const PRESENCE_PERSIST_KEY = 'presence_known_devices';
 
 const MIN_DEVICE_NAME_LENGTH = 1;
 const MAX_DEVICE_NAME_LENGTH = 12;
@@ -199,6 +204,33 @@ export class PresenceRegistry {
     }
   }
 
+  /**
+   * Bulk import a list of known devices (e.g. on startup, restoring from DB).
+   * All imported devices are marked as disconnected (they have no live session).
+   */
+  importKnownDevices(devices: PresenceDevice[]): void {
+    const now = Date.now();
+    for (const device of devices) {
+      const lastSeenAt = new Date(device.lastSeenAt).getTime();
+      if (Number.isNaN(lastSeenAt)) continue;
+      if (now - lastSeenAt > RECENTLY_ACTIVE_WINDOW_MS) continue;
+
+      this.knownDevices.set(device.deviceId, {
+        ...device,
+        connected: false,
+        connectedAt: null,
+      });
+    }
+  }
+
+  exportKnownDevices(): PresenceDevice[] {
+    return Array.from(this.knownDevices.values()).map(device => ({
+      ...device,
+      connected: false,
+      connectedAt: null,
+    }));
+  }
+
   private markDisconnected(deviceId: string, disconnectedAt: string): void {
     const known = this.knownDevices.get(deviceId);
     if (!known) {
@@ -210,4 +242,29 @@ export class PresenceRegistry {
     known.lastDisconnectedAt = disconnectedAt;
     known.lastSeenAt = disconnectedAt;
   }
+}
+
+export async function loadPresence(registry: PresenceRegistry): Promise<void> {
+  try {
+    const result = await pool.query(
+      `SELECT value FROM app_settings WHERE key = $1 LIMIT 1`,
+      [PRESENCE_PERSIST_KEY]
+    );
+    if (result.rows.length === 0) return;
+    const raw = result.rows[0].value;
+    if (!Array.isArray(raw)) return;
+    registry.importKnownDevices(raw as PresenceDevice[]);
+  } catch (err) {
+    logger.warn({ err }, 'Failed to load presence from DB');
+  }
+}
+
+export async function persistPresence(registry: PresenceRegistry): Promise<void> {
+  const devices = registry.exportKnownDevices();
+  await pool.query(
+    `INSERT INTO app_settings(key, value)
+     VALUES ($1, $2::jsonb)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+    [PRESENCE_PERSIST_KEY, JSON.stringify(devices)]
+  );
 }

@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import pinoHttp from 'pino-http';
 import healthRouter from './routes/health';
 import productsRouter from './routes/products';
 import ordersRouter from './routes/orders';
@@ -11,12 +12,22 @@ import {
   persistRealtimeState,
   sanitizeState,
 } from './realtime/state';
-import { PresenceRegistry, sanitizeIdentity } from './realtime/presence';
+import { PresenceRegistry, sanitizeIdentity, loadPresence, persistPresence } from './realtime/presence';
 import { RealtimeServer } from './realtime/server';
+import { config } from './config';
+import { logger } from './logger';
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '3001', 10);
+const PORT = config.port;
 
+app.use(pinoHttp({
+  logger,
+  customLogLevel: (_req, res, err) => {
+    if (err || res.statusCode >= 500) return 'error';
+    if (res.statusCode >= 400) return 'warn';
+    return 'debug';
+  },
+}));
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
@@ -70,6 +81,9 @@ function publishPresenceUpdate(): void {
     presence: snapshot,
   };
   realtimeServer.broadcastPresence(snapshot.connected);
+  void persistPresence(presenceRegistry).catch(err => {
+    logger.warn({ err }, 'Failed to persist presence');
+  });
 }
 
 function nextStateVersion(): number {
@@ -128,7 +142,7 @@ app.get('/api/realtime/stream', (req: Request, res: Response) => {
     res.write(': keepalive\n\n');
     presenceRegistry.markSeen(identity.deviceId, identity.deviceName);
     realtimeState = buildPresenceState();
-  }, 20000);
+  }, config.realtime.sseKeepAliveMs);
 
   res.on('close', () => {
     clearInterval(keepAlive);
@@ -153,7 +167,7 @@ app.post('/api/realtime/prices', async (req: Request, res: Response) => {
     await persistRealtimeState(realtimeState);
     res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('[Realtime] Failed to persist prices update:', err);
+    logger.error({ err }, 'Failed to persist prices update');
     res.status(500).json({ error: 'Failed to persist prices' });
   }
 });
@@ -171,19 +185,19 @@ app.post('/api/realtime/happy-hour', async (req: Request, res: Response) => {
     await persistRealtimeState(realtimeState);
     res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('[Realtime] Failed to persist happy hour update:', err);
+    logger.error({ err }, 'Failed to persist happy hour update');
     res.status(500).json({ error: 'Failed to persist happy hour' });
   }
 });
 
-async function waitForDb(retries = 30, delay = 2000): Promise<void> {
+async function waitForDb(retries = config.db.waitRetries, delay = config.db.waitDelayMs): Promise<void> {
   for (let i = 0; i < retries; i++) {
     try {
       await pool.query('SELECT 1');
-      console.log('[DB] Connection established.');
+      logger.info('Database connection established');
       return;
     } catch {
-      console.log(`[DB] Waiting for database... (${i + 1}/${retries})`);
+      logger.info({ attempt: i + 1, retries }, 'Waiting for database');
       await new Promise(r => setTimeout(r, delay));
     }
   }
@@ -208,17 +222,19 @@ async function start(): Promise<void> {
       },
     };
 
+    await loadPresence(presenceRegistry);
+
     setInterval(() => {
       presenceRegistry.cleanupExpired();
       realtimeState = buildPresenceState();
       publishPresenceUpdate();
-    }, 15000);
+    }, config.presence.cleanupIntervalMs);
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[Server] Running on port ${PORT}`);
+      logger.info({ port: PORT }, 'Server running');
     });
   } catch (err) {
-    console.error('[Server] Fatal error:', err);
+    logger.fatal({ err }, 'Server fatal error');
     process.exit(1);
   }
 }

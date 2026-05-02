@@ -27,11 +27,24 @@ export class RealtimeServer {
     }
   }
 
-  broadcastState<T>(state: T): void {
-    this.broadcast({ type: 'STATE_UPDATE', payload: state });
+  broadcastState(state: {
+    prices?: Record<string, number>;
+    happyHour?: boolean;
+    version?: number;
+    updatedAt?: string;
+  }): void {
+    // Send only the meaningful state fields. Presence is broadcast separately
+    // via PRESENCE_UPDATE to avoid sending the full device list on every change.
+    const delta = {
+      prices: state.prices,
+      happyHour: state.happyHour,
+      version: state.version,
+      updatedAt: state.updatedAt,
+    };
+    this.broadcast({ type: 'STATE_UPDATE', payload: delta });
     // Backward compatibility for older frontends still listening to "state"
     for (const client of this.clients) {
-      writeSse(client, 'state', state);
+      writeSse(client, 'state', delta);
     }
   }
 

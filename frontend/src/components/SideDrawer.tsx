@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 type View =
   | 'order'
   | 'prices'
+  | 'sync'
   | 'history'
   | 'actions'
   | 'service'
@@ -24,6 +25,7 @@ interface SideDrawerProps {
 
 const MENU_ITEMS: DrawerItem[] = [
   { id: 'prices', label: 'Gestion des prix', icon: '💰', enabled: true },
+  { id: 'sync', label: 'Commandes en attente', icon: '🔁', enabled: true },
   { id: 'history', label: 'Journal de caisse', icon: '📜', enabled: false },
   { id: 'actions', label: 'Journal des actions', icon: '🧾', enabled: false },
   { id: 'service', label: 'Service', icon: '📊', enabled: false },

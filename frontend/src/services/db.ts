@@ -76,6 +76,11 @@ export async function recordSyncAttempt(id: string, patch: Partial<PendingOrder>
   await tx.done;
 }
 
+export async function deletePendingOrder(id: string): Promise<void> {
+  const db = await getDb();
+  await db.delete('pendingOrders', id);
+}
+
 export async function deleteSyncedOrders(): Promise<void> {
   const db = await getDb();
   const tx = db.transaction('pendingOrders', 'readwrite');

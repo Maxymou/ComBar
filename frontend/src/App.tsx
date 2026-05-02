@@ -1,92 +1,36 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Screen, OrderLine, PendingOrder, Product, RealtimeState, PresenceDevice } from './types';
+import { useState, useCallback, useEffect } from 'react';
+import { Screen, PendingOrder } from './types';
 import { useProducts } from './hooks/useProducts';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
+import { useRealtimeState, initPrices } from './hooks/useRealtimeState';
+import { useOrderBuilder } from './hooks/useOrderBuilder';
 import { savePendingOrder, getSetting, markOrdersSynced } from './services/db';
-import {
-  submitOrder,
-  fetchRealtimeState,
-  renameTerminal,
-  sendPresenceHeartbeat,
-} from './services/api';
-import {
-  connectRealtimeStream,
-  enqueueRealtimeChange,
-  flushQueuedRealtimeChanges,
-  shouldApplyIncomingState,
-} from './services/sync';
+import { submitOrder } from './services/api';
 import { DENOMINATIONS } from './data/denominations';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
 import Summary from './components/Summary';
 import Payment from './components/Payment';
 import PriceEditor from './components/PriceEditor';
+import PendingOrdersView from './components/PendingOrdersView';
 import SideDrawer, { View } from './components/SideDrawer';
 import { isDebugViewportEnabled } from './debug';
-import { useDeviceIdentity } from './hooks/useDeviceIdentity';
 import './App.css';
-
-const REALTIME_STATE_KEY = 'combar.realtime.state';
-function initPrices(products: Product[]): Record<string, number> {
-  const p: Record<string, number> = {};
-  products.forEach(i => {
-    p[`${i.id}_normal`] = i.normalPrice;
-    p[`${i.id}_hh`] = i.hhPrice;
-  });
-  return p;
-}
-
-function getPrice(item: Product, isHH: boolean, prices: Record<string, number>): number {
-  const key = `${item.id}_${isHH ? 'hh' : 'normal'}`;
-  return prices[key] ?? (isHH ? item.hhPrice : item.normalPrice);
-}
-
-function readCachedRealtimeState(): Partial<RealtimeState> | null {
-  try {
-    const raw = localStorage.getItem(REALTIME_STATE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<RealtimeState>;
-    if (!parsed || typeof parsed !== 'object') return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function persistRealtimeState(state: Partial<RealtimeState>): void {
-  localStorage.setItem(REALTIME_STATE_KEY, JSON.stringify(state));
-}
 
 export default function App() {
   const viewportDebug = isDebugViewportEnabled();
   const { products } = useProducts();
   const { isOnline, pendingCount, syncState, lastSyncAt, refreshPending, forceSync } = useOnlineStatus();
 
-  const [isHH, setIsHH] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState(0);
-  const [connectedDevices, setConnectedDevices] = useState<PresenceDevice[]>([]);
-  const [recentlyActiveDevices, setRecentlyActiveDevices] = useState<PresenceDevice[]>([]);
   const [order, setOrder] = useState<Record<string, number>>({});
   const [screen, setScreen] = useState<Screen>('select');
   const [checked, setChecked] = useState<Record<string, number>>({});
   const [given, setGiven] = useState<Record<string, number>>({});
-  const [prices, setPrices] = useState<Record<string, number>>(() => initPrices(products));
   const [confirmFeedback, setConfirmFeedback] = useState(false);
   const [adminPin, setAdminPin] = useState('0000');
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [view, setView] = useState<View>('order');
-
-  const heartbeatTimerRef = useRef<number | null>(null);
-  const lastAppliedStateRef = useRef<Partial<RealtimeState> | null>(readCachedRealtimeState());
-  const { identity, updateDeviceName } = useDeviceIdentity();
-
-  const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
-  const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP || 'unknown';
-  const pwaEnabled =
-    import.meta.env.VITE_ENABLE_PWA === undefined
-      ? import.meta.env.PROD
-      : import.meta.env.VITE_ENABLE_PWA === 'true';
 
   const reset = useCallback(() => {
     setOrder({});
@@ -95,64 +39,29 @@ export default function App() {
     setScreen('select');
   }, []);
 
-  const applyRealtimeState = useCallback((newState: Partial<RealtimeState>) => {
-    if (!shouldApplyIncomingState(lastAppliedStateRef.current, newState)) {
-      return;
-    }
+  const {
+    prices, isHH, onlineUsers, connectedDevices, recentlyActiveDevices, identity,
+    setPrices, setIsHH,
+    sendOrQueuePricesUpdate, sendOrQueueHappyHourUpdate, handleRenameTerminal,
+  } = useRealtimeState({
+    products,
+    isOnline,
+    lastSyncAt,
+    onHappyHourChanged: reset,
+  });
 
-    if (newState.prices && typeof newState.prices === 'object') {
-      setPrices(prev => ({ ...prev, ...newState.prices }));
-    }
+  const { lines, bonusShooters, total } = useOrderBuilder({ products, order, isHH, prices });
 
-    if (typeof newState.happyHour === 'boolean') {
-      const nextHappyHour = newState.happyHour;
-      setIsHH(prev => {
-        if (prev !== nextHappyHour) {
-          setOrder({});
-          setChecked({});
-          setGiven({});
-          setScreen('select');
-        }
-        return nextHappyHour;
-      });
-    }
-
-    const nextClientsCount =
-      typeof newState.clientsCount === 'number'
-        ? newState.clientsCount
-        : typeof newState.clients === 'number'
-          ? newState.clients
-          : undefined;
-    if (typeof nextClientsCount === 'number') {
-      setOnlineUsers(nextClientsCount);
-    }
-
-    if (newState.presence) {
-      if (Array.isArray(newState.presence.connected)) {
-        setConnectedDevices(newState.presence.connected);
-      }
-      if (Array.isArray(newState.presence.recentlyActive)) {
-        setRecentlyActiveDevices(newState.presence.recentlyActive);
-      }
-      if (typeof newState.presence.connectedCount === 'number') {
-        setOnlineUsers(newState.presence.connectedCount);
-      }
-    } else if (Array.isArray(newState.connectedDevices)) {
-      setConnectedDevices(newState.connectedDevices);
-    }
-
-    lastAppliedStateRef.current = {
-      ...lastAppliedStateRef.current,
-      ...newState,
-    };
-    persistRealtimeState(lastAppliedStateRef.current);
-  }, []);
-
+  const buildVersion = import.meta.env.VITE_APP_VERSION || 'dev';
+  const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP || 'unknown';
+  const pwaEnabled =
+    import.meta.env.VITE_ENABLE_PWA === undefined
+      ? import.meta.env.PROD
+      : import.meta.env.VITE_ENABLE_PWA === 'true';
 
   useEffect(() => {
     const handleUpdateAvailable = () => setUpdateAvailable(true);
     window.addEventListener('combar:pwa-update-ready', handleUpdateAvailable as EventListener);
-
     return () => {
       window.removeEventListener('combar:pwa-update-ready', handleUpdateAvailable as EventListener);
     };
@@ -164,157 +73,12 @@ export default function App() {
     apply();
     setUpdateAvailable(false);
   }, []);
-  // Load admin PIN once.
+
   useEffect(() => {
     getSetting<string>('adminPin').then(pin => {
       if (pin) setAdminPin(pin);
     });
   }, []);
-
-  // Initialize local state from defaults + cache (or legacy IndexedDB setting fallback).
-  useEffect(() => {
-    let cancelled = false;
-
-    async function hydrateLocalState() {
-      const defaults = initPrices(products);
-      const cachedState = readCachedRealtimeState();
-
-      if (cachedState) {
-        if (!cancelled) {
-          setPrices({ ...defaults, ...(cachedState.prices || {}) });
-          setIsHH(Boolean(cachedState.happyHour));
-          const cachedClientsCount =
-            typeof cachedState.clientsCount === 'number'
-              ? cachedState.clientsCount
-              : typeof cachedState.clients === 'number'
-                ? cachedState.clients
-                : 0;
-          setOnlineUsers(cachedClientsCount);
-          setConnectedDevices(Array.isArray(cachedState.connectedDevices) ? cachedState.connectedDevices : []);
-          setRecentlyActiveDevices(Array.isArray(cachedState.presence?.recentlyActive) ? cachedState.presence.recentlyActive : []);
-        }
-        return;
-      }
-
-      const legacyPrices = await getSetting<Record<string, number>>('customPrices');
-      if (!cancelled) {
-        setPrices({ ...defaults, ...(legacyPrices || {}) });
-      }
-    }
-
-    hydrateLocalState();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [products]);
-
-  // Network reconnection: fetch latest realtime state + flush queued actions.
-  useEffect(() => {
-    if (!isOnline) return;
-
-    fetchRealtimeState()
-      .then(state => applyRealtimeState(state))
-      .catch(() => {
-        // Keep local cached state if fetch fails.
-      });
-
-    void flushQueuedRealtimeChanges();
-  }, [isOnline, applyRealtimeState]);
-
-
-  useEffect(() => {
-    if (!isOnline || !lastSyncAt) return;
-
-    fetchRealtimeState()
-      .then(state => applyRealtimeState(state))
-      .catch(() => {
-        // Keep local state if refresh fails after sync.
-      });
-  }, [applyRealtimeState, isOnline, lastSyncAt]);
-  // Realtime stream subscription with reconnect and presence updates.
-  useEffect(() => {
-    if (!isOnline) {
-      if (heartbeatTimerRef.current) {
-        window.clearInterval(heartbeatTimerRef.current);
-        heartbeatTimerRef.current = null;
-      }
-      return;
-    }
-    const disconnect = connectRealtimeStream(identity, {
-      onStateUpdate: applyRealtimeState,
-      onPresenceUpdate: devices => {
-        applyRealtimeState({
-          connectedDevices: devices,
-          clients: devices.length,
-          clientsCount: devices.length,
-          presence: {
-            connectedCount: devices.length,
-            connected: devices,
-            recentlyActive: [],
-          },
-        });
-      },
-    });
-
-    const sendHeartbeat = () => {
-      void sendPresenceHeartbeat(identity.deviceId, identity.deviceName).catch(() => undefined);
-    };
-    sendHeartbeat();
-    heartbeatTimerRef.current = window.setInterval(sendHeartbeat, 25000);
-
-    return () => {
-      disconnect();
-      if (heartbeatTimerRef.current) {
-        window.clearInterval(heartbeatTimerRef.current);
-        heartbeatTimerRef.current = null;
-      }
-    };
-  }, [applyRealtimeState, identity.deviceId, identity.deviceName, isOnline]);
-
-  const sendOrQueuePricesUpdate = useCallback(async (nextPrices: Record<string, number>) => {
-    persistRealtimeState({
-      prices: nextPrices,
-      happyHour: isHH,
-      clients: onlineUsers,
-      clientsCount: onlineUsers,
-      connectedDevices,
-    });
-
-    if (isOnline) {
-      try {
-        enqueueRealtimeChange({ type: 'updatePrices', payload: nextPrices });
-        await flushQueuedRealtimeChanges();
-        return;
-      } catch {
-        // Falls through to queue mode
-      }
-    }
-
-    enqueueRealtimeChange({ type: 'updatePrices', payload: nextPrices });
-  }, [connectedDevices, isHH, isOnline, onlineUsers]);
-
-  const sendOrQueueHappyHourUpdate = useCallback(async (nextHappyHour: boolean) => {
-    persistRealtimeState({
-      prices,
-      happyHour: nextHappyHour,
-      clients: onlineUsers,
-      clientsCount: onlineUsers,
-      connectedDevices,
-    });
-
-    if (isOnline) {
-      try {
-        enqueueRealtimeChange({ type: 'toggleHappyHour', payload: nextHappyHour });
-        await flushQueuedRealtimeChanges();
-        return;
-      } catch {
-        // Falls through to queue mode
-      }
-    }
-
-    enqueueRealtimeChange({ type: 'toggleHappyHour', payload: nextHappyHour });
-  }, [connectedDevices, isOnline, onlineUsers, prices]);
 
   const add = (id: string) => setOrder(p => ({ ...p, [id]: (p[id] || 0) + 1 }));
   const remove = (id: string) => setOrder(p => {
@@ -328,9 +92,7 @@ export default function App() {
     const nextHappyHour = !isHH;
     setIsHH(nextHappyHour);
     void sendOrQueueHappyHourUpdate(nextHappyHour);
-    setOrder({});
-    setChecked({});
-    setScreen('select');
+    reset();
   };
 
   const checkItem = (id: string, max: number) =>
@@ -355,15 +117,14 @@ export default function App() {
         return updated;
       });
     }
-  }, [sendOrQueuePricesUpdate]);
+  }, [sendOrQueuePricesUpdate, setPrices]);
 
   const resetPrices = useCallback(() => {
     const fresh = initPrices(products);
     setPrices(fresh);
     void sendOrQueuePricesUpdate(fresh);
-  }, [products, sendOrQueuePricesUpdate]);
+  }, [products, sendOrQueuePricesUpdate, setPrices]);
 
-  // PIN-protected navigation to price editor via side menu
   const handleNavigatePrices = useCallback(() => {
     const input = window.prompt('Entrez le PIN admin :');
     if (input === adminPin) {
@@ -380,47 +141,9 @@ export default function App() {
       handleNavigatePrices();
       return;
     }
-
     setView(nextView);
     setIsDrawerOpen(false);
   }, [handleNavigatePrices]);
-
-  // Build order lines
-  const bonusShooters = Object.entries(order)
-    .filter(([id]) => isHH && products.find(i => i.id === id)?.hhBonus)
-    .reduce((s, [, q]) => s + q, 0);
-
-  const lines: OrderLine[] = products
-    .filter(i => (order[i.id] || 0) > 0)
-    .map(i => {
-      const price = getPrice(i, isHH && i.category === 'drink', prices);
-      const qty = order[i.id];
-      return {
-        productId: i.id,
-        productName: i.name,
-        icon: i.icon,
-        quantity: qty,
-        unitPrice: price,
-        subtotal: price * qty,
-        isBonus: false,
-        category: i.category,
-      };
-    });
-
-  if (bonusShooters > 0) {
-    lines.push({
-      productId: '_bonus',
-      productName: 'Shooters offerts',
-      icon: '🥃',
-      quantity: bonusShooters,
-      unitPrice: 0,
-      subtotal: 0,
-      isBonus: true,
-      category: 'drink',
-    });
-  }
-
-  const total = lines.reduce((s, l) => s + l.subtotal, 0);
 
   const handleConfirmPayment = useCallback(async () => {
     const totalGiven = DENOMINATIONS.reduce((s, m) => s + m.value * (given[m.id] || 0), 0);
@@ -447,10 +170,8 @@ export default function App() {
       retries: 0,
     };
 
-    // Save locally first (always)
     await savePendingOrder(pendingOrder);
 
-    // Try to send to server if online
     if (navigator.onLine) {
       try {
         await submitOrder(pendingOrder);
@@ -462,34 +183,12 @@ export default function App() {
 
     await refreshPending();
 
-    // Show feedback then reset
     setConfirmFeedback(true);
     setTimeout(() => {
       setConfirmFeedback(false);
       reset();
     }, 1500);
   }, [given, total, isHH, lines, refreshPending, reset]);
-
-  const handleRenameTerminal = useCallback(async (nextName: string) => {
-    const nextIdentity = updateDeviceName(nextName);
-
-    setConnectedDevices(prev => prev.map(device => (
-      device.deviceId === nextIdentity.deviceId
-        ? { ...device, deviceName: nextIdentity.deviceName }
-        : device
-    )));
-
-    if (!isOnline) return;
-
-    try {
-      await renameTerminal(nextIdentity.deviceId, nextIdentity.deviceName);
-      await sendPresenceHeartbeat(nextIdentity.deviceId, nextIdentity.deviceName);
-      const latestState = await fetchRealtimeState();
-      applyRealtimeState(latestState);
-    } catch {
-      // Local rename stays persisted; server sync will catch up later.
-    }
-  }, [applyRealtimeState, isOnline, updateDeviceName]);
 
   if (confirmFeedback) {
     return (
@@ -603,7 +302,19 @@ export default function App() {
             />
           )}
 
-          {view !== 'order' && view !== 'prices' && (
+          {view === 'sync' && (
+            <PendingOrdersView
+              syncState={syncState}
+              pendingCount={pendingCount}
+              onForceSync={forceSync}
+              onGoBack={() => {
+                setView('order');
+                setScreen('select');
+              }}
+            />
+          )}
+
+          {view !== 'order' && view !== 'prices' && view !== 'sync' && (
             <div className="placeholder-view">
               <div className="placeholder-title">Écran à venir</div>
               <div className="placeholder-text">Cette section sera disponible prochainement.</div>

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import pool from '../db/pool';
 import { RealtimeServer } from '../realtime/server';
+import { logger } from '../logger';
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.get('/api/products', async (_req: Request, res: Response) => {
     }));
     res.json(products);
   } catch (err) {
-    console.error('[Products] Error:', err);
+    logger.error({ err }, 'Failed to fetch products');
     res.status(500).json({ error: 'Failed to fetch products' });
   }
 });
@@ -69,7 +70,7 @@ router.patch('/api/products/:id/prices', async (req: Request, res: Response) => 
 
     res.json({ ok: true });
   } catch (err) {
-    console.error('[Products] Error while updating prices:', err);
+    logger.error({ err, productId }, 'Failed to update prices');
     res.status(500).json({ error: 'Failed to update prices' });
   }
 });
