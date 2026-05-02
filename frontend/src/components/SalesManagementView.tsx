@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Category, Product, ProductManagementPayload } from '../types';
-import { createProduct, deleteProduct, fetchAllProductsForManagement, fetchCategories, updateProduct } from '../services/api';
-import { getCategoryMeta } from '../utils/categories';
+import { createProduct, deleteProduct, fetchAllProductsForManagement, fetchCategories, reorderProducts, updateProduct } from '../services/api';
+import { getCategoryMeta, normalizeCategory } from '../utils/categories';
 
 interface SalesManagementViewProps {
   onGoBack: () => void;
@@ -26,8 +26,23 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
   const loadData = async () => { setLoading(true); setError(null); try { const [p,c] = await Promise.all([fetchAllProductsForManagement(), fetchCategories()]); setProducts(p); setCategories(c); } catch { setError('Impossible de charger les produits.'); } finally { setLoading(false);} };
   useEffect(() => { void loadData(); }, []);
 
-  const sortedProducts = useMemo(() => [...products].sort((a,b)=> a.displayOrder===b.displayOrder ? a.name.localeCompare(b.name) : a.displayOrder-b.displayOrder), [products]);
   const categoryOptions = useMemo(() => categories.filter(c => ['drink','consigne','soft','sandwich','food'].includes(c.name)), [categories]);
+  const groupedProducts = useMemo(() => {
+    const grouped = products.reduce<Record<string, Product[]>>((acc, product) => {
+      const key = normalizeCategory(product.category);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(product);
+      return acc;
+    }, {});
+
+    return Object.entries(grouped)
+      .map(([key, items]) => ({
+        key,
+        ...getCategoryMeta(key),
+        items: [...items].sort((a, b) => (a.displayOrder - b.displayOrder) || a.name.localeCompare(b.name)),
+      }))
+      .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+  }, [products]);
 
   const resetForm = () => { setIsEditingId(null); setIsProductCardOpen(false); setForm({ ...EMPTY_FORM, category: categoryOptions[0]?.name || 'drink' }); };
   const openNew = () => { setIsEditingId(null); setError(null); setForm({ ...EMPTY_FORM, category: categoryOptions[0]?.name || 'drink' }); setIsProductCardOpen(true); };
@@ -57,6 +72,35 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
 
   const handleDeactivate = async (id: string) => { if (!window.confirm('Désactiver ce produit ?')) return; setError(null); setSuccess(null); try { await deleteProduct(id); setSuccess('Produit désactivé.'); await loadData(); await onProductsChanged(); } catch { setError('Erreur lors de la désactivation.'); } };
 
+  const handleMoveProduct = async (categoryKey: string, fromIndex: number, direction: -1 | 1) => {
+    const group = groupedProducts.find(g => g.key === categoryKey);
+    if (!group) return;
+    const toIndex = fromIndex + direction;
+    if (toIndex < 0 || toIndex >= group.items.length) return;
+
+    const reordered = [...group.items];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    const updates = reordered.map((item, index) => ({ id: item.id, displayOrder: index }));
+
+    try {
+      setError(null);
+      setSuccess(null);
+      setProducts(current => current.map(item => {
+        const update = updates.find(u => u.id === item.id);
+        return update ? { ...item, displayOrder: update.displayOrder } : item;
+      }));
+      await reorderProducts(updates);
+      await loadData();
+      await onProductsChanged();
+      setSuccess('Ordre des produits mis à jour.');
+    } catch {
+      setError('Impossible de modifier l’ordre des produits.');
+      await loadData();
+    }
+  };
+
   return <section className="sales-management-view">
     <header className="sales-management-header">
       <button type="button" className="placeholder-back-btn" onClick={onGoBack}>← Retour</button>
@@ -66,7 +110,7 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
     {success && <p className="sales-feedback success">{success}</p>}
     <button type="button" className="new-product-button" onClick={openNew}>+ Nouveau produit</button>
     {loading && <p>Chargement...</p>}
-    {!loading && <div className="sales-product-list">{sortedProducts.map(product => <article key={product.id} className="sales-product-item"><div className="sales-item-main"><span className="sales-product-icon">{product.icon}</span><div><strong>{product.name}</strong><p>{getCategoryMeta(product.category).label.replace(/^\S+\s/, '')}</p></div></div><div className="sales-item-prices"><span>{product.normalPrice.toFixed(2)}€</span><span>HH {product.hhPrice.toFixed(2)}€</span></div><div className="sales-badges">{product.hhBonus && <span className="badge">Bonus HH</span>}<span className={`badge ${product.active ? 'active' : 'inactive'}`}>{product.active ? 'Actif' : 'Inactif'}</span>{product.bonusParentProductName && <span className="badge">Bonus de : {product.bonusParentProductName}</span>}</div><div className="sales-item-actions"><button type="button" onClick={()=>openEdit(product)}>Modifier</button><button type="button" onClick={()=>handleDeactivate(product.id)}>{product.active ? 'Désactiver' : 'Supprimer'}</button></div></article>)}</div>}
+    {!loading && <div className="sales-product-list">{groupedProducts.map(group => <section key={group.key} className="sales-category-section"><h3>{group.label.replace(/^\S+\s/, '')}</h3>{group.items.map((product, index) => <article key={product.id} className="sales-product-item"><div className="sales-item-main"><span className="sales-order-number">{index + 1}.</span><span className="sales-product-icon">{product.icon}</span><div><strong>{product.name}</strong></div></div><div className="sales-item-prices"><span>{product.normalPrice.toFixed(2)}€</span><span>HH {product.hhPrice.toFixed(2)}€</span></div><div className="sales-badges">{product.hhBonus && <span className="badge">Bonus HH</span>}<span className={`badge ${product.active ? 'active' : 'inactive'}`}>{product.active ? 'Actif' : 'Inactif'}</span>{product.bonusParentProductName && <span className="badge">Bonus de : {product.bonusParentProductName}</span>}</div><div className="sales-item-actions"><button type="button" onClick={() => handleMoveProduct(group.key, index, -1)} disabled={index === 0}>↑</button><button type="button" onClick={() => handleMoveProduct(group.key, index, 1)} disabled={index === group.items.length - 1}>↓</button><button type="button" onClick={()=>openEdit(product)}>Modifier</button><button type="button" onClick={()=>handleDeactivate(product.id)}>{product.active ? 'Désactiver' : 'Supprimer'}</button></div></article>)}</section>)}</div>}
     {isProductCardOpen && <div className="product-editor-overlay" onClick={resetForm}><article className="product-editor-card" onClick={e=>e.stopPropagation()}><h3>{isEditingId ? 'Modifier le produit' : 'Nouveau produit'}</h3>
       <label>Nom du produit<input placeholder="Ex : Bière 25cl" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} /></label>
       <label>Prix<div className="price-input"><input type="number" min="0" step="0.01" value={form.normalPrice} onChange={e=>setForm({...form,normalPrice:Number(e.target.value)})} /><span>€</span></div></label>

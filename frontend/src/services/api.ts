@@ -142,3 +142,13 @@ export async function deleteProduct(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/products/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
+
+
+export async function reorderProducts(items: { id: string; displayOrder: number }[]): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/products/reorder`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
