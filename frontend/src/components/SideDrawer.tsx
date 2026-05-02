@@ -23,9 +23,12 @@ interface SideDrawerProps {
   onSelect: (view: View) => void;
 }
 
-const MENU_ITEMS: DrawerItem[] = [
+const ADMIN_ITEMS: DrawerItem[] = [
   { id: 'prices', label: 'Gestion des prix', icon: '💰', enabled: true },
   { id: 'sync', label: 'Commandes en attente', icon: '🔁', enabled: true },
+];
+
+const MENU_ITEMS: DrawerItem[] = [
   { id: 'history', label: 'Journal de caisse', icon: '📜', enabled: false },
   { id: 'actions', label: 'Journal des actions', icon: '🧾', enabled: false },
   { id: 'service', label: 'Service', icon: '📊', enabled: false },
@@ -79,6 +82,28 @@ export default function SideDrawer({ isOpen, activeView, onClose, onSelect }: Si
       <aside className={`side-drawer ${isOpen ? 'open' : ''}`} aria-hidden={!isOpen} aria-label="Navigation principale">
         <div className="side-drawer-header">Navigation</div>
         <nav className="side-drawer-nav" aria-label="Menu latéral">
+          <div className="side-drawer-section" aria-label="Administration">
+            <div className="side-drawer-section-title">Administration</div>
+            <div className="side-drawer-subnav">
+              {ADMIN_ITEMS.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`side-drawer-item side-drawer-subitem ${activeView === item.id ? 'active' : ''}`}
+                  onClick={() => {
+                    if (!item.enabled) return;
+                    onSelect(item.id);
+                  }}
+                  disabled={!item.enabled}
+                  aria-current={activeView === item.id ? 'page' : undefined}
+                >
+                  <span className="side-drawer-item-icon" aria-hidden="true">{item.icon}</span>
+                  <span className="side-drawer-item-text">{item.label}</span>
+                  {!item.enabled && <span className="side-drawer-item-badge">Bientôt</span>}
+                </button>
+              ))}
+            </div>
+          </div>
           {MENU_ITEMS.map(item => (
             <button
               key={item.id}
