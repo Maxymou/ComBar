@@ -97,6 +97,18 @@ router.put('/api/products/reorder', async (req: Request, res: Response) => {
   try {
     await client.query('BEGIN');
 
+    const hasUpdatedAt = await client.query(`
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'products'
+        AND column_name = 'updated_at'
+      LIMIT 1
+    `);
+    const reorderQuery = hasUpdatedAt.rows.length
+      ? 'UPDATE products SET display_order = $1, updated_at = NOW() WHERE id = $2'
+      : 'UPDATE products SET display_order = $1 WHERE id = $2';
+
     for (const item of items) {
       if (!item || typeof item.id !== 'string' || Number.isNaN(Number(item.displayOrder))) {
         await client.query('ROLLBACK');
@@ -109,7 +121,7 @@ router.put('/api/products/reorder', async (req: Request, res: Response) => {
         return res.status(404).json({ error: `Product not found: ${item.id}` });
       }
 
-      await client.query('UPDATE products SET display_order = $1 WHERE id = $2', [Number(item.displayOrder), item.id]);
+      await client.query(reorderQuery, [Number(item.displayOrder), item.id]);
     }
 
     await client.query('COMMIT');

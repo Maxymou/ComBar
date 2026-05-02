@@ -75,27 +75,32 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
   const handleMoveProduct = async (categoryKey: string, fromIndex: number, direction: -1 | 1) => {
     const group = groupedProducts.find(g => g.key === categoryKey);
     if (!group) return;
+
     const toIndex = fromIndex + direction;
     if (toIndex < 0 || toIndex >= group.items.length) return;
 
+    const previousProducts = products;
     const reordered = [...group.items];
     const [moved] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, moved);
 
     const updates = reordered.map((item, index) => ({ id: item.id, displayOrder: index }));
+    const updateMap = new Map(updates.map(item => [item.id, item.displayOrder]));
+
+    setProducts(current => current.map(product => {
+      const nextOrder = updateMap.get(product.id);
+      return nextOrder === undefined ? product : { ...product, displayOrder: nextOrder };
+    }));
+
+    setError(null);
+    setSuccess(null);
 
     try {
-      setError(null);
-      setSuccess(null);
-      setProducts(current => current.map(item => {
-        const update = updates.find(u => u.id === item.id);
-        return update ? { ...item, displayOrder: update.displayOrder } : item;
-      }));
       await reorderProducts(updates);
-      await loadData();
       await onProductsChanged();
       setSuccess('Ordre des produits mis à jour.');
     } catch {
+      setProducts(previousProducts);
       setError('Impossible de modifier l’ordre des produits.');
       await loadData();
     }
