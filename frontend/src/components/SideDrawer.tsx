@@ -4,9 +4,7 @@ type View =
   | 'order'
   | 'prices'
   | 'sync'
-  | 'history'
-  | 'actions'
-  | 'service'
+  | 'bank'
   | 'settings';
 
 interface DrawerItem {
@@ -25,9 +23,7 @@ interface SideDrawerProps {
 }
 
 const MAIN_MENU_ITEMS: DrawerItem[] = [
-  { id: 'history', label: 'Journal de caisse', icon: '📜', enabled: false },
-  { id: 'actions', label: 'Journal des actions', icon: '🧾', enabled: false },
-  { id: 'service', label: 'Service', icon: '📊', enabled: false },
+  { id: 'bank', label: 'Banque', icon: '🏦', enabled: true },
   { id: 'settings', label: 'Paramètres', icon: '⚙️', enabled: false },
 ];
 
@@ -89,6 +85,23 @@ export default function SideDrawer({ isOpen, activeView, onClose, onSelect, onOp
         <nav className="side-drawer-nav" aria-label="Menu latéral">
           {drawerMenu === 'main' ? (
             <>
+              {[MAIN_MENU_ITEMS[0]].map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`side-drawer-item ${activeView === item.id ? 'active' : ''}`}
+                  onClick={() => {
+                    if (!item.enabled) return;
+                    onSelect(item.id);
+                  }}
+                  disabled={!item.enabled}
+                  aria-current={activeView === item.id ? 'page' : undefined}
+                >
+                  <span className="side-drawer-item-icon" aria-hidden="true">{item.icon}</span>
+                  <span className="side-drawer-item-text">{item.label}</span>
+                  {!item.enabled && <span className="side-drawer-item-badge">Bientôt</span>}
+                </button>
+              ))}
               <button
                 type="button"
                 className="side-drawer-item"
@@ -102,7 +115,7 @@ export default function SideDrawer({ isOpen, activeView, onClose, onSelect, onOp
                 <span className="side-drawer-item-icon" aria-hidden="true">🔐</span>
                 <span className="side-drawer-item-text">Administration</span>
               </button>
-              {MAIN_MENU_ITEMS.map(item => (
+              {[MAIN_MENU_ITEMS[1]].map(item => (
                 <button
                   key={item.id}
                   type="button"
