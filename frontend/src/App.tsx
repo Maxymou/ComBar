@@ -125,25 +125,25 @@ export default function App() {
     void sendOrQueuePricesUpdate(fresh);
   }, [products, sendOrQueuePricesUpdate, setPrices]);
 
-  const handleNavigatePrices = useCallback(() => {
+  const handleOpenAdministration = useCallback(() => {
     const input = window.prompt('Entrez le PIN admin :');
+
     if (input === adminPin) {
-      setView('prices');
-      setScreen('select');
-      setIsDrawerOpen(false);
-    } else if (input !== null) {
+      return true;
+    }
+
+    if (input !== null) {
       window.alert('PIN incorrect');
     }
+
+    return false;
   }, [adminPin]);
 
   const handleSelectView = useCallback((nextView: View) => {
-    if (nextView === 'prices') {
-      handleNavigatePrices();
-      return;
-    }
     setView(nextView);
+    setScreen('select');
     setIsDrawerOpen(false);
-  }, [handleNavigatePrices]);
+  }, []);
 
   const handleConfirmPayment = useCallback(async () => {
     const totalGiven = DENOMINATIONS.reduce((s, m) => s + m.value * (given[m.id] || 0), 0);
@@ -210,6 +210,7 @@ export default function App() {
         activeView={view}
         onClose={() => setIsDrawerOpen(false)}
         onSelect={handleSelectView}
+        onOpenAdministration={handleOpenAdministration}
       />
       <div className={`app${isHH ? ' hh' : ''}${viewportDebug ? ' viewport-debug-app' : ''}`}>
         <Header

@@ -1291,6 +1291,24 @@ body::before{
   color: #8f8f8f;
 }
 
+
+.side-drawer-back {
+  width: 100%;
+  border: 1px solid #333;
+  background: #0f0f0f;
+  color: #aaa;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.side-drawer-back:active {
+  transform: scale(0.98);
+}
+
 /* ── PLACEHOLDER VIEWS ── */
 .placeholder-view {
   flex: 1;
