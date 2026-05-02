@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { SyncState } from '../hooks/useOnlineStatus';
 
 type View =
   | 'order'
@@ -17,9 +18,18 @@ interface DrawerItem {
 interface SideDrawerProps {
   isOpen: boolean;
   activeView: View;
+  isOnline: boolean;
+  pendingCount: number;
+  syncState: SyncState;
+  buildVersion: string;
+  buildTimestamp: string;
+  pwaEnabled: boolean;
+  updateAvailable: boolean;
   onClose: () => void;
   onSelect: (view: View) => void;
   onOpenAdministration: () => boolean;
+  onForceSync: () => void;
+  onApplyUpdate: () => void;
 }
 
 const MAIN_MENU_ITEMS: DrawerItem[] = [
@@ -32,8 +42,41 @@ const ADMIN_MENU_ITEMS: DrawerItem[] = [
   { id: 'sync', label: 'Commandes en attente', icon: '🔁', enabled: true },
 ];
 
-export default function SideDrawer({ isOpen, activeView, onClose, onSelect, onOpenAdministration }: SideDrawerProps) {
+export default function SideDrawer({
+  isOpen,
+  activeView,
+  isOnline,
+  pendingCount,
+  syncState,
+  buildVersion,
+  buildTimestamp,
+  pwaEnabled,
+  updateAvailable,
+  onClose,
+  onSelect,
+  onOpenAdministration,
+  onForceSync,
+  onApplyUpdate,
+}: SideDrawerProps) {
   const [drawerMenu, setDrawerMenu] = useState<'main' | 'administration'>('main');
+
+  const syncClassName =
+    !isOnline || syncState === 'offline'
+      ? 'offline'
+      : syncState === 'pending' || syncState === 'error'
+        ? 'pending'
+        : syncState === 'syncing'
+          ? 'syncing'
+          : 'online';
+
+  const syncLabel = useMemo(() => {
+    if (!isOnline || syncState === 'offline') return 'Hors ligne';
+    if (syncState === 'syncing') return 'Synchronisation...';
+    if (syncState === 'error') return `${pendingCount} en attente (erreur réseau)`;
+    if (pendingCount > 0 || syncState === 'pending') return `${pendingCount} en attente`;
+    return 'Synchronisé';
+  }, [isOnline, pendingCount, syncState]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -85,6 +128,26 @@ export default function SideDrawer({ isOpen, activeView, onClose, onSelect, onOp
         <nav className="side-drawer-nav" aria-label="Menu latéral">
           {drawerMenu === 'main' ? (
             <>
+              <section className="drawer-status-card" aria-label="État de l’application">
+                <div className="drawer-status-title">État de l’application</div>
+                <div className="drawer-sync-row">
+                  <span className={`drawer-sync-dot ${syncClassName}`} aria-hidden="true" />
+                  <span className="drawer-sync-text">{syncLabel}</span>
+                </div>
+                <div className="drawer-status-actions">
+                  {isOnline && (
+                    <button type="button" className="drawer-status-btn" onClick={onForceSync}>
+                      Forcer synchro
+                    </button>
+                  )}
+                  {updateAvailable && (
+                    <button type="button" className="drawer-status-btn update" onClick={onApplyUpdate}>
+                      Mettre à jour
+                    </button>
+                  )}
+                </div>
+                <div className="drawer-build-info">v{buildVersion} · {buildTimestamp} · PWA {pwaEnabled ? 'ON' : 'OFF'}</div>
+              </section>
               {[MAIN_MENU_ITEMS[0]].map(item => (
                 <button
                   key={item.id}
