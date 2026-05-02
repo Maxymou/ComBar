@@ -344,7 +344,7 @@ export default function App() {
             />
           )}
 
-          {view !== 'order' && view !== 'prices' && view !== 'sync' && view !== 'bank' && (
+          {view !== 'order' && view !== 'prices' && view !== 'sync' && view !== 'bank' && view !== 'salesManagement' && (
             <div className="placeholder-view">
               <div className="placeholder-title">Écran à venir</div>
               <div className="placeholder-text">Cette section sera disponible prochainement.</div>

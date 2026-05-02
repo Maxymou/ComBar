@@ -15,6 +15,12 @@ const CAT_LABELS: Record<string, string> = {
   food: '🥙 Sandwiches',
 };
 
+const CATEGORY_GROUPS: Record<'drink' | 'consigne' | 'food', Set<string>> = {
+  drink: new Set(['drink', 'soft']),
+  consigne: new Set(['consigne']),
+  food: new Set(['food', 'sandwich']),
+};
+
 function getPrice(item: Product, isHH: boolean, prices: Record<string, number>): number {
   const key = `${item.id}_${isHH ? 'hh' : 'normal'}`;
   return prices[key] ?? (isHH ? item.hhPrice : item.normalPrice);
@@ -25,7 +31,7 @@ export default function PriceEditor({ products, prices, isHH, onSetPrice, onRese
     <div className="prices-screen screen-wrapper">
       <div className="prices-scroll">
         {(['drink', 'consigne', 'food'] as const).map(cat => {
-          const catItems = products.filter(p => p.category === cat);
+          const catItems = products.filter(p => CATEGORY_GROUPS[cat].has(p.category));
           return (
             <div key={cat} className="price-group">
               <div className="price-cat-label">{CAT_LABELS[cat]}</div>

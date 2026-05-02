@@ -18,9 +18,9 @@ function getPrice(item: Product, isHH: boolean, prices: Record<string, number>):
 }
 
 export default function ProductGrid({ products, order, isHH, prices, onAdd, onRemove, onValidate, onCancel }: ProductGridProps) {
-  const drinks = products.filter(p => p.category === 'drink');
+  const drinks = products.filter(p => p.category === 'drink' || p.category === 'soft');
   const consignes = products.filter(p => p.category === 'consigne');
-  const food = products.filter(p => p.category === 'food');
+  const food = products.filter(p => p.category === 'food' || p.category === 'sandwich');
   const totalItems = Object.values(order).reduce((s, v) => s + v, 0);
 
   return (
