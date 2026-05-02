@@ -1,5 +1,6 @@
 import pool from '../db/pool';
 import { PresenceDevice } from './presence';
+import { logger } from '../logger';
 
 export interface RealtimePresenceSnapshot {
   connectedCount: number;
@@ -95,7 +96,7 @@ export async function loadRealtimeState(): Promise<RealtimeState> {
 
     return sanitizeState(result.rows[0].value);
   } catch (err) {
-    console.error('[Realtime] Failed to load state from DB:', err);
+    logger.error({ err }, 'Failed to load realtime state from DB');
     return { ...DEFAULT_STATE, updatedAt: new Date().toISOString() };
   }
 }

@@ -1,4 +1,5 @@
 import pool from './pool';
+import { logger } from '../logger';
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS categories (
@@ -99,15 +100,13 @@ ON CONFLICT (key) DO NOTHING;
 `;
 
 export async function initDatabase(): Promise<void> {
-  console.log('[DB] Initializing schema...');
+  logger.info('Initializing database schema');
   await pool.query(SCHEMA_SQL);
-  console.log('[DB] Schema ready.');
 
-  console.log('[DB] Running migrations...');
+  logger.info('Running database migrations');
   await pool.query(MIGRATION_SQL);
-  console.log('[DB] Migrations complete.');
 
-  console.log('[DB] Seeding data...');
+  logger.info('Seeding initial data');
   await pool.query(SEED_SQL);
-  console.log('[DB] Seed complete.');
+  logger.info('Database ready');
 }
