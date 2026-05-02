@@ -1255,6 +1255,77 @@ body::before{
   border-left: 1px solid #333;
   margin-left: 4px;
 }
+
+.drawer-status-card {
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px solid #2a2a2a;
+  border-radius: 14px;
+  background: #101010;
+}
+
+.drawer-status-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #d8d8d8;
+  margin-bottom: 8px;
+}
+
+.drawer-sync-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.drawer-sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.drawer-sync-dot.online { background: #00E676; }
+.drawer-sync-dot.offline { background: #FF3B30; }
+.drawer-sync-dot.pending,
+.drawer-sync-dot.syncing { background: #F3B63A; }
+
+.drawer-sync-text {
+  font-size: 0.72rem;
+  color: #cfcfcf;
+  font-weight: 600;
+}
+
+.drawer-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.drawer-status-btn {
+  border: 1px solid #333;
+  background: #151515;
+  color: #ddd;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.drawer-status-btn.update {
+  border-color: #4f8cff;
+  color: #b9d1ff;
+}
+
+.drawer-build-info {
+  font-size: 0.58rem;
+  line-height: 1.35;
+  color: #777;
+  word-break: break-word;
+}
 .side-drawer-item {
   display: flex;
   align-items: center;

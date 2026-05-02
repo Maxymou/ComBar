@@ -41,9 +41,9 @@ export default function App() {
   }, []);
 
   const {
-    prices, isHH, onlineUsers, connectedDevices, recentlyActiveDevices, identity,
+    prices, isHH,
     setPrices, setIsHH,
-    sendOrQueuePricesUpdate, sendOrQueueHappyHourUpdate, handleRenameTerminal,
+    sendOrQueuePricesUpdate, sendOrQueueHappyHourUpdate,
   } = useRealtimeState({
     products,
     isOnline,
@@ -209,29 +209,24 @@ export default function App() {
       <SideDrawer
         isOpen={isDrawerOpen}
         activeView={view}
+        isOnline={isOnline}
+        pendingCount={pendingCount}
+        syncState={syncState}
+        buildVersion={buildVersion}
+        buildTimestamp={buildTimestamp}
+        pwaEnabled={pwaEnabled}
+        updateAvailable={updateAvailable}
         onClose={() => setIsDrawerOpen(false)}
         onSelect={handleSelectView}
         onOpenAdministration={handleOpenAdministration}
+        onForceSync={forceSync}
+        onApplyUpdate={handleApplyUpdate}
       />
       <div className={`app${isHH ? ' hh' : ''}${viewportDebug ? ' viewport-debug-app' : ''}`}>
         <Header
           isHH={isHH}
-          isOnline={isOnline}
-          pendingCount={pendingCount}
-          syncState={syncState}
-          onlineUsers={onlineUsers}
-          connectedDevices={connectedDevices}
-          recentlyActiveDevices={recentlyActiveDevices}
-          localDeviceName={identity.deviceName}
-          onRenameTerminal={handleRenameTerminal}
           onToggleHH={toggleHH}
           onOpenMenu={() => setIsDrawerOpen(true)}
-          onForceSync={forceSync}
-          onApplyUpdate={handleApplyUpdate}
-          buildVersion={buildVersion}
-          buildTimestamp={buildTimestamp}
-          pwaEnabled={pwaEnabled}
-          updateAvailable={updateAvailable}
         />
 
         <main className={`app-content${viewportDebug ? ' viewport-debug-content' : ''}`} data-screen={screen}>
