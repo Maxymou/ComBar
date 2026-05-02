@@ -18,18 +18,28 @@ export function useProducts() {
 
     try {
       const remote = await fetchProducts();
-      if (remote.length > 0) {
-        setProducts(remote);
-        await saveProducts(remote);
-      }
+      setProducts(remote);
+      await saveProducts(remote);
     } catch {}
 
     setLoading(false);
+  }, []);
+
+  const refreshProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const remote = await fetchProducts();
+      setProducts(remote);
+      await saveProducts(remote);
+      return remote;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
 
-  return { products, loading, refreshProducts: loadProducts };
+  return { products, loading, refreshProducts };
 }

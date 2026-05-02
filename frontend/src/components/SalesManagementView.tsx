@@ -4,7 +4,7 @@ import { createProduct, deleteProduct, fetchAllProductsForManagement, fetchCateg
 
 interface SalesManagementViewProps {
   onGoBack: () => void;
-  onProductsChanged: () => Promise<void> | void;
+  onProductsChanged: () => Promise<unknown> | void;
 }
 
 const QUICK_ICONS = ['🍺','🍻','🥃','🍷','🥂','🥤','🧃','☕','🫙','🪣','🥪','🥙','🍔','🍟','🛒'];
