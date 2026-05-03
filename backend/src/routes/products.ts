@@ -71,24 +71,6 @@ router.post('/api/products', async (req, res) => {
   } catch (err) { logger.error({ err }, 'Failed to create product'); res.status(500).json({ error: 'Failed to create product' }); }
 });
 
-router.put('/api/products/:id', async (req, res) => {
-  const productId = String(req.params.id || '').trim();
-  const { name, icon, normalPrice, hhPrice, hhBonus, category, displayOrder, active, bonusParentProductId } = req.body ?? {};
-  try {
-    const cat = await pool.query('SELECT id FROM categories WHERE name = $1', [category]); if (!cat.rows.length) return res.status(400).json({ error: 'Invalid category' });
-    const bonusParentId = hhBonus ? (bonusParentProductId || null) : null;
-    if (hhBonus && !(await validateBonus(bonusParentId, productId))) return res.status(400).json({ error: 'Invalid bonus parent product' });
-    const result = await pool.query(`UPDATE products SET name=$1, icon=$2, normal_price=$3, hh_price=$4, hh_bonus=$5, category_id=$6, display_order=$7, active=$8, bonus_parent_product_id=$9
-       WHERE id=$10
-       RETURNING id, name, icon, normal_price, hh_price, hh_bonus, category_id, display_order, active, bonus_parent_product_id`,
-      [name, icon || '🛒', Number(normalPrice), Number(hhPrice), Boolean(hhBonus), cat.rows[0].id, Number(displayOrder), Boolean(active), bonusParentId, productId]);
-    if (!result.rows.length) return res.status(404).json({ error: 'Product not found' });
-    (req.app.locals.realtimeServer as RealtimeServer | undefined)?.broadcast({ type: 'STATE_UPDATE', payload: { updatedAt: new Date().toISOString() } });
-    res.json(mapProductRow({ ...result.rows[0], category, category_id: cat.rows[0].id, bonus_parent_product_name: null }));
-  } catch (err) { logger.error({ err, productId }, 'Failed to update product'); res.status(500).json({ error: 'Failed to update product' }); }
-});
-
-
 router.put('/api/products/reorder', async (req: Request, res: Response) => {
   const { items } = req.body ?? {};
   if (!Array.isArray(items)) return res.status(400).json({ error: 'Invalid payload' });
@@ -134,6 +116,23 @@ router.put('/api/products/reorder', async (req: Request, res: Response) => {
   } finally {
     client.release();
   }
+});
+
+router.put('/api/products/:id', async (req, res) => {
+  const productId = String(req.params.id || '').trim();
+  const { name, icon, normalPrice, hhPrice, hhBonus, category, displayOrder, active, bonusParentProductId } = req.body ?? {};
+  try {
+    const cat = await pool.query('SELECT id FROM categories WHERE name = $1', [category]); if (!cat.rows.length) return res.status(400).json({ error: 'Invalid category' });
+    const bonusParentId = hhBonus ? (bonusParentProductId || null) : null;
+    if (hhBonus && !(await validateBonus(bonusParentId, productId))) return res.status(400).json({ error: 'Invalid bonus parent product' });
+    const result = await pool.query(`UPDATE products SET name=$1, icon=$2, normal_price=$3, hh_price=$4, hh_bonus=$5, category_id=$6, display_order=$7, active=$8, bonus_parent_product_id=$9
+       WHERE id=$10
+       RETURNING id, name, icon, normal_price, hh_price, hh_bonus, category_id, display_order, active, bonus_parent_product_id`,
+      [name, icon || '🛒', Number(normalPrice), Number(hhPrice), Boolean(hhBonus), cat.rows[0].id, Number(displayOrder), Boolean(active), bonusParentId, productId]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Product not found' });
+    (req.app.locals.realtimeServer as RealtimeServer | undefined)?.broadcast({ type: 'STATE_UPDATE', payload: { updatedAt: new Date().toISOString() } });
+    res.json(mapProductRow({ ...result.rows[0], category, category_id: cat.rows[0].id, bonus_parent_product_name: null }));
+  } catch (err) { logger.error({ err, productId }, 'Failed to update product'); res.status(500).json({ error: 'Failed to update product' }); }
 });
 
 router.delete('/api/products/:id', async (req, res) => { const productId = String(req.params.id || '').trim(); try { await pool.query('UPDATE products SET active = false WHERE id = $1', [productId]); (req.app.locals.realtimeServer as RealtimeServer | undefined)?.broadcast({ type: 'STATE_UPDATE', payload: { updatedAt: new Date().toISOString() } }); res.json({ ok: true }); } catch (err) { logger.error({ err, productId }, 'Failed to deactivate product'); res.status(500).json({ error: 'Failed to deactivate product' }); } });
