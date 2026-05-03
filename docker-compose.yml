@@ -25,6 +25,8 @@ services:
       DB_NAME: ${DB_NAME:-combar}
       DB_USER: ${DB_USER:-combar}
       DB_PASSWORD: ${DB_PASSWORD:-combar}
+      DEBUG_ADMIN_TOKEN: ${DEBUG_ADMIN_TOKEN:-}
+      DEBUG_WORKDIR: ${DEBUG_WORKDIR:-/opt/ComBar}
     depends_on:
       db:
         condition: service_healthy
@@ -43,6 +45,7 @@ services:
         VITE_API_URL: ""
         VITE_ENABLE_PWA: "true"
         VITE_APP_VERSION: ${APP_VERSION:-1.0.0}
+        VITE_DEBUG_ADMIN_TOKEN: ${VITE_DEBUG_ADMIN_TOKEN:-}
         CACHE_BUST: ${CACHE_BUST:-1}
     restart: unless-stopped
     ports:
