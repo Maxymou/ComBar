@@ -167,10 +167,10 @@ export interface DebugHealthResponse {
   cwd: string;
   db: 'connected' | 'disconnected';
   dbError?: string;
-  dockerPs?: {
-    ok: boolean;
-    stdout?: string;
-    stderr?: string;
+  hostApi?: {
+    available: boolean;
+    url: string;
+    status?: unknown;
     error?: string;
   };
 }

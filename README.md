@@ -207,8 +207,8 @@ Le PIN est stocké localement dans IndexedDB (clé `adminPin`).
 | GET | `/api/realtime/state` | Snapshot de l'état temps réel (prix, happy hour, clients) |
 | POST | `/api/realtime/prices` | Publier les prix globaux |
 | POST | `/api/realtime/happy-hour` | Publier l'état Happy Hour global |
-| GET | `/api/debug/health` | Diagnostic backend (uptime, Node, DB, `docker compose ps`). Protégé par `X-Debug-Token` si `DEBUG_ADMIN_TOKEN` est défini. |
-| POST | `/api/debug/update` | Déclenche `git pull` + `docker compose up -d --build` (mode `normal` ou `force-pwa`). **Exécute des commandes serveur** : ne JAMAIS exposer publiquement et toujours configurer `DEBUG_ADMIN_TOKEN` en production. |
+| GET | `/api/debug/health` | Diagnostic backend (uptime, Node, DB) + état de la Host API (`hostApi`). Protégé par `X-Debug-Token` si `DEBUG_ADMIN_TOKEN` est défini. |
+| POST | `/api/debug/update` | Relaye la mise à jour vers la Host API locale (mode `normal` ou `force-pwa`). |
 
 ### Page Débug (Administration > Débug)
 
@@ -223,6 +223,40 @@ L'écran **Administration > Débug** rassemble :
 
 > ⚠️ La page Débug est accessible derrière le PIN admin du frontend, mais ce n'est pas une vraie sécurité. En production, **toujours** définir `DEBUG_ADMIN_TOKEN` côté backend et `VITE_DEBUG_ADMIN_TOKEN` côté frontend, et **ne pas exposer le port 8080 publiquement**.
 
+
+### Installer la Host API locale (hôte)
+
+La mise à jour serveur est exécutée par `host-tools/combar-debug-host-api.js` sur l'hôte (bind `127.0.0.1:4878`).
+
+Avec sudo :
+
+```bash
+cd /opt/ComBar
+
+sudo install -m 755 host-tools/combar-debug-host-api.js /opt/ComBar/host-tools/combar-debug-host-api.js
+sudo install -m 644 host-tools/combar-debug-host-api.service /etc/systemd/system/combar-debug-host-api.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now combar-debug-host-api.service
+
+systemctl status combar-debug-host-api.service --no-pager
+curl http://127.0.0.1:4878/status
+```
+
+Sans sudo (root) :
+
+```bash
+cd /opt/ComBar
+
+install -m 755 host-tools/combar-debug-host-api.js /opt/ComBar/host-tools/combar-debug-host-api.js
+install -m 644 host-tools/combar-debug-host-api.service /etc/systemd/system/combar-debug-host-api.service
+
+systemctl daemon-reload
+systemctl enable --now combar-debug-host-api.service
+
+systemctl status combar-debug-host-api.service --no-pager
+curl http://127.0.0.1:4878/status
+```
 ### Format d'une commande (POST /api/orders)
 
 ```json
