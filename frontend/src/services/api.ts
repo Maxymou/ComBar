@@ -2,6 +2,9 @@ import { Product, PendingOrder, RealtimeState, Category, ProductManagementPayloa
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
+const ALLOWED_PRODUCT_IMAGE_TYPES = new Set(['image/png']);
+
+
 export async function fetchProducts(): Promise<Product[]> {
   const res = await fetch(`${API_BASE}/api/products`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -129,6 +132,10 @@ export async function createProduct(payload: ProductManagementPayload): Promise<
 }
 
 export async function uploadProductImage(file: File): Promise<string> {
+  if (!ALLOWED_PRODUCT_IMAGE_TYPES.has(file.type)) {
+    throw new Error('Format non supporté. Utilisez un fichier PNG.');
+  }
+
   const res = await fetch(`${API_BASE}/api/products/upload`, {
     method: 'POST',
     headers: {

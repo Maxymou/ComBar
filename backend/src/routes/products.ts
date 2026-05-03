@@ -9,8 +9,10 @@ const router = Router();
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads/products');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-const pngUploadParser = express.raw({
-  type: ['image/png', 'application/octet-stream'],
+const SUPPORTED_IMAGE_MIME_TYPES = ['image/png'];
+
+const imageUploadParser = express.raw({
+  type: [...SUPPORTED_IMAGE_MIME_TYPES, 'application/octet-stream'],
   limit: '2mb',
 });
 
@@ -43,26 +45,16 @@ FROM products p
 JOIN categories c ON p.category_id = c.id
 LEFT JOIN products bp ON bp.id = p.bonus_parent_product_id`;
 
-router.post('/api/products/upload', pngUploadParser, async (req: Request, res: Response) => {
+router.post('/api/products/upload', imageUploadParser, async (req: Request, res: Response) => {
   const body = req.body;
 
   if (!Buffer.isBuffer(body) || body.length === 0) {
     return res.status(400).json({ error: 'Aucun fichier reçu.' });
   }
 
-  const isPng =
-    body.length >= 8 &&
-    body[0] === 0x89 &&
-    body[1] === 0x50 &&
-    body[2] === 0x4e &&
-    body[3] === 0x47 &&
-    body[4] === 0x0d &&
-    body[5] === 0x0a &&
-    body[6] === 0x1a &&
-    body[7] === 0x0a;
-
-  if (!isPng) {
-    return res.status(400).json({ error: 'Seuls les fichiers PNG sont autorisés.' });
+  const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (contentType && !SUPPORTED_IMAGE_MIME_TYPES.includes(contentType)) {
+    return res.status(400).json({ error: 'Format non supporté. Utilisez un fichier PNG.' });
   }
 
   const originalName = String(req.headers['x-file-name'] || 'product.png');
