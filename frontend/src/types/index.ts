@@ -2,6 +2,8 @@ export interface Product {
   id: string;
   name: string;
   icon: string;
+  iconType?: 'emoji' | 'image';
+  iconUrl?: string | null;
   normalPrice: number;
   hhPrice: number;
   hhBonus: boolean;
@@ -21,6 +23,8 @@ export interface Category {
 export interface ProductManagementPayload {
   name: string;
   icon: string;
+  iconType?: 'emoji' | 'image';
+  iconUrl?: string | null;
   normalPrice: number;
   hhPrice: number;
   hhBonus: boolean;

@@ -1,4 +1,5 @@
 import { Product } from '../types';
+import ProductIcon from './ProductIcon';
 import { getCategoryMeta, normalizeCategory } from '../utils/categories';
 
 interface PriceEditorProps {
@@ -35,7 +36,7 @@ export default function PriceEditor({ products, prices, isHH, onSetPrice, onRese
             <div className="price-cat-label">{group.label}</div>
             {group.items.map(item => (
               <div key={item.id} className="price-row">
-                <span className="price-row-icon">{item.icon}</span>
+                <span className="price-row-icon"><ProductIcon product={item} /></span>
                 <span className="price-row-name">{item.name}</span>
                 <div className="price-inputs">
                   <div className="price-input-wrap">

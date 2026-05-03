@@ -2565,3 +2565,6 @@ body::before{
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.product-icon-image{width:2.4rem;height:2.4rem;object-fit:contain;display:block;}
+

@@ -7,8 +7,10 @@ import {
   fetchCategories,
   reorderProducts,
   updateProduct,
+  uploadProductImage,
 } from '../services/api';
 import { getCategoryMeta, normalizeCategory } from '../utils/categories';
+import ProductIcon from './ProductIcon';
 
 interface SalesManagementViewProps {
   onGoBack: () => void;
@@ -29,6 +31,8 @@ const EMPTY_FORM: FormState = {
   bonusParentProductId: null,
   displayOrder: 0,
   active: true,
+  iconType: 'emoji',
+  iconUrl: null,
 };
 
 function buildGroupedProducts(items: Product[]) {
@@ -125,13 +129,25 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
 
   const validate = (): string | null => {
     if (!form.name.trim()) return 'Le nom du produit est obligatoire.';
-    if (!form.icon.trim()) return 'Veuillez sélectionner une icône.';
+    if (form.iconType !== 'image' && !form.icon.trim()) return 'Veuillez sélectionner une icône.';
+    if (form.iconType === 'image' && !form.iconUrl) return 'Veuillez uploader une image PNG.';
     if (!form.category) return 'La catégorie est obligatoire.';
     if (Number.isNaN(Number(form.normalPrice)) || Number(form.normalPrice) < 0) return 'Le prix doit être valide (>= 0).';
     if (Number.isNaN(Number(form.hhPrice)) || Number(form.hhPrice) < 0) return 'Le prix Happy Hour doit être valide (>= 0).';
     if (form.hhBonus && !form.bonusParentProductId) return 'Sélectionnez le produit rattaché pour le bonus HH.';
     if (form.hhBonus && isEditingId && form.bonusParentProductId === isEditingId) return 'Un produit ne peut pas être rattaché à lui-même.';
     return null;
+  };
+
+
+  const handleIconUpload = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const url = await uploadProductImage(file);
+      setForm(prev => ({ ...prev, iconType: 'image', iconUrl: url }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload impossible');
+    }
   };
 
   const submitForm = async () => {
@@ -148,6 +164,8 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
         ...form,
         name: form.name.trim(),
         icon: form.customIcon?.trim() || form.icon,
+        iconType: form.iconType || 'emoji',
+        iconUrl: form.iconType === 'image' ? (form.iconUrl || null) : null,
         bonusParentProductId: form.hhBonus ? form.bonusParentProductId : null,
       };
       if (isEditingId) {
@@ -277,7 +295,7 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
                 <article key={product.id} className={`sales-product-item ${isReorderMode ? 'reorder-mode' : ''} ${movingProductId === product.id ? 'moving' : ''}`}>
                   <div className="sales-item-main">
                     <span className="sales-order-number">{index + 1}.</span>
-                    <span className="sales-product-icon">{product.icon}</span>
+                    <span className="sales-product-icon"><ProductIcon product={product} /></span>
                     <div>
                       <strong>{product.name}</strong>
                     </div>
@@ -316,7 +334,8 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
             <label>Nom du produit<input placeholder="Ex : Bière 25cl" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
             <label>Prix<div className="price-input"><input type="number" min="0" step="0.01" value={form.normalPrice} onChange={e => setForm({ ...form, normalPrice: Number(e.target.value) })} /><span>€</span></div></label>
             <label>Prix Happy Hour<div className="price-input"><input type="number" min="0" step="0.01" value={form.hhPrice} onChange={e => setForm({ ...form, hhPrice: Number(e.target.value) })} /><span>€</span></div></label>
-            <label>Icône<div className="icon-grid">{QUICK_ICONS.map(icon => <button key={icon} type="button" className={form.icon === icon ? 'selected' : ''} onClick={() => setForm({ ...form, icon, customIcon: '' })}>{icon}</button>)}</div><input placeholder="Icône personnalisée (optionnel)" value={form.customIcon || ''} onChange={e => setForm({ ...form, customIcon: e.target.value, icon: e.target.value || form.icon })} /></label>
+            <label>Type d’icône<select value={form.iconType || 'emoji'} onChange={e => setForm({ ...form, iconType: e.target.value as 'emoji' | 'image' })}><option value="emoji">Emoji</option><option value="image">Image PNG</option></select></label>
+            {form.iconType !== 'image' ? (<label>Icône<div className="icon-grid">{QUICK_ICONS.map(icon => <button key={icon} type="button" className={form.icon === icon ? 'selected' : ''} onClick={() => setForm({ ...form, icon, customIcon: '' })}>{icon}</button>)}</div><input placeholder="Icône personnalisée (optionnel)" value={form.customIcon || ''} onChange={e => setForm({ ...form, customIcon: e.target.value, icon: e.target.value || form.icon })} /></label>) : (<label>Image PNG<input type="file" accept="image/png" onChange={e => void handleIconUpload(e.target.files?.[0] || null)} />{form.iconUrl && <img src={form.iconUrl} className="product-icon-image" alt="Aperçu" />}</label>)}
             <label>Catégorie<select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>{categoryOptions.map(c => <option key={c.id} value={c.name}>{getCategoryMeta(c.name).label.replace(/^\S+\s/, '')}</option>)}</select></label>
             <label className="toggle-row"><input type="checkbox" checked={form.hhBonus} onChange={e => setForm({ ...form, hhBonus: e.target.checked, bonusParentProductId: e.target.checked ? form.bonusParentProductId : null })} /> Bonus HH</label>
             {form.hhBonus && <label>Rattaché au produit<select value={form.bonusParentProductId || ''} onChange={e => setForm({ ...form, bonusParentProductId: e.target.value || null })}><option value="">Sélectionner un produit</option>{products.filter(p => p.id !== isEditingId).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
