@@ -67,7 +67,7 @@ export default function Summary({
                   onClick={() => onCheckItem(l.productId, l.quantity)}
                 >
                   <div className="line-left">
-                    <span className="line-icon"><ProductIcon product={{ name: l.productName, icon: l.icon, iconType: 'emoji', iconUrl: null }} /></span>
+                    <span className="line-icon"><ProductIcon product={{ name: l.productName, icon: l.icon, iconType: l.iconType || 'emoji', iconUrl: l.iconUrl || null }} /></span>
                     <span className="line-name">{l.productName}</span>
                   </div>
                   <div className="line-right">

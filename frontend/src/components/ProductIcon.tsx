@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Product } from '../types';
 import { resolveBackendAssetUrl } from '../utils/url';
 
@@ -8,6 +8,10 @@ interface Props { product: ProductIconData; className?: string; }
 export default function ProductIcon({ product, className = '' }: Props) {
   const resolvedImageUrl = useMemo(() => resolveBackendAssetUrl(product.iconUrl), [product.iconUrl]);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setImageLoadFailed(false);
+  }, [resolvedImageUrl]);
 
   if (product.iconType === 'image' && resolvedImageUrl && !imageLoadFailed) {
     return (
