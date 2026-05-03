@@ -9,6 +9,7 @@ const PORT = Number.parseInt(process.env.COMBAR_DEBUG_HOST_API_PORT || '4878', 1
 const BIND = process.env.COMBAR_DEBUG_HOST_API_BIND || '127.0.0.1';
 const MAX_LOG_BYTES = Number.parseInt(process.env.COMBAR_DEBUG_MAX_LOG_BYTES || String(64 * 1024), 10);
 const UPDATE_TIMEOUT_MS = Number.parseInt(process.env.COMBAR_DEBUG_UPDATE_TIMEOUT_MS || String(5 * 60 * 1000), 10);
+const STATUS_TIMEOUT_MS = Number.parseInt(process.env.COMBAR_DEBUG_STATUS_TIMEOUT_MS || '4000', 10);
 
 let isUpdateRunning = false;
 
@@ -58,10 +59,11 @@ function runCommand(cmd, args, options = {}) {
       return;
     }
 
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : UPDATE_TIMEOUT_MS;
     const timer = setTimeout(() => {
       timedOut = true;
       try { child.kill('SIGKILL'); } catch (_) {}
-    }, UPDATE_TIMEOUT_MS);
+    }, timeoutMs);
 
     child.stdout.on('data', (chunk) => {
       const text = chunk.toString();
@@ -89,9 +91,9 @@ function runCommand(cmd, args, options = {}) {
 
 async function runStatus() {
   const checks = await Promise.all([
-    runCommand('git', ['--version']),
-    runCommand('docker', ['--version']),
-    runCommand('docker', ['compose', 'version']),
+    runCommand('git', ['--version'], { timeoutMs: STATUS_TIMEOUT_MS }),
+    runCommand('docker', ['--version'], { timeoutMs: STATUS_TIMEOUT_MS }),
+    runCommand('docker', ['compose', 'version'], { timeoutMs: STATUS_TIMEOUT_MS }),
   ]);
 
   return {
@@ -205,6 +207,27 @@ const server = http.createServer(async (req, res) => {
   send(res, 404, { ok: false, error: 'Not found' });
 });
 
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`[ComBar Debug Host API] Port ${PORT} déjà utilisé sur ${BIND}. Le service est peut-être déjà lancé.`);
+  } else {
+    console.error('[ComBar Debug Host API] server error', err);
+  }
+  process.exit(1);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[ComBar Debug Host API] uncaughtException', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('[ComBar Debug Host API] unhandledRejection', err);
+  process.exit(1);
+});
+
+console.log(`[ComBar Debug Host API] root=${COMBAR_ROOT} bind=${BIND} port=${PORT}`);
+
 server.listen(PORT, BIND, () => {
-  process.stdout.write(`ComBar debug host API listening on http://${BIND}:${PORT}\n`);
+  process.stdout.write(`[ComBar Debug Host API] listening on http://${BIND}:${PORT}\n`);
 });

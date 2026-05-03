@@ -226,7 +226,17 @@ L'écran **Administration > Débug** rassemble :
 
 ### Installer la Host API locale (hôte)
 
-La mise à jour serveur est exécutée par `host-tools/combar-debug-host-api.js` sur l'hôte (bind `127.0.0.1:4878`).
+La mise à jour serveur est exécutée par `host-tools/combar-debug-host-api.js` sur l'hôte.
+
+Le service doit écouter sur :
+
+```bash
+COMBAR_DEBUG_HOST_API_BIND=0.0.0.0
+```
+
+Cela est nécessaire pour que le backend Docker puisse appeler `http://host.docker.internal:4878`.
+
+> ⚠️ Sécurité : la Host API ne doit pas être exposée publiquement sur Internet. Elle doit rester accessible uniquement depuis l’hôte et les conteneurs Docker locaux.
 
 Avec sudo :
 
@@ -239,7 +249,7 @@ sudo install -m 644 host-tools/combar-debug-host-api.service /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl enable --now combar-debug-host-api.service
 
-systemctl status combar-debug-host-api.service --no-pager
+systemctl status combar-debug-host-api.service --no-pager -l
 curl http://127.0.0.1:4878/status
 ```
 
@@ -254,8 +264,24 @@ install -m 644 host-tools/combar-debug-host-api.service /etc/systemd/system/comb
 systemctl daemon-reload
 systemctl enable --now combar-debug-host-api.service
 
-systemctl status combar-debug-host-api.service --no-pager
+systemctl status combar-debug-host-api.service --no-pager -l
 curl http://127.0.0.1:4878/status
+```
+
+Si Node n’est pas installé sur l’hôte :
+
+```bash
+apt update
+apt install -y nodejs
+node -v
+which node
+```
+
+Vérification depuis le conteneur backend :
+
+```bash
+cd /opt/ComBar
+docker compose exec backend node -e "fetch('http://host.docker.internal:4878/status').then(r=>r.text()).then(console.log).catch(console.error)"
 ```
 ### Format d'une commande (POST /api/orders)
 
