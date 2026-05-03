@@ -1511,3 +1511,61 @@ body::before{
 .sales-category-section { display:flex; flex-direction:column; gap:10px; }
 .sales-category-section h3 { font-size:1rem; color:#f5f5f5; margin-top:8px; }
 .sales-order-number { min-width:24px; color:#bdbdbd; font-weight:700; }
+
+.reorder-products-button,
+.save-reorder-button,
+.cancel-reorder-button {
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid #333;
+  background: #232323;
+  color: #fff;
+  font-weight: 700;
+}
+
+.reorder-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.reorder-actions button {
+  flex: 1;
+}
+
+.sales-product-item {
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.sales-product-item.reorder-mode {
+  cursor: default;
+  border-color: rgba(255, 214, 0, 0.45);
+}
+
+.sales-product-item.reorder-mode:active {
+  transform: scale(0.985);
+}
+
+.sales-product-item.moving {
+  transform: scale(1.02);
+  box-shadow: 0 0 0 2px rgba(255, 214, 0, 0.45);
+}
+
+.sales-reorder-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.sales-reorder-controls button {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  font-weight: 900;
+  border: 1px solid #333;
+  background: #232323;
+  color: #fff;
+}
