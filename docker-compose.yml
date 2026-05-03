@@ -2,6 +2,8 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       POSTGRES_DB: ${DB_NAME:-combar}
       POSTGRES_USER: ${DB_USER:-combar}
@@ -18,6 +20,8 @@ services:
     build:
       context: ./backend
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       PORT: "3001"
       DB_HOST: db
@@ -26,6 +30,7 @@ services:
       DB_USER: ${DB_USER:-combar}
       DB_PASSWORD: ${DB_PASSWORD:-combar}
       DEBUG_ADMIN_TOKEN: ${DEBUG_ADMIN_TOKEN:-}
+      DEBUG_HOST_API_URL: ${DEBUG_HOST_API_URL:-http://host.docker.internal:4878}
       DEBUG_WORKDIR: ${DEBUG_WORKDIR:-/opt/ComBar}
     depends_on:
       db:
@@ -48,6 +53,8 @@ services:
         VITE_DEBUG_ADMIN_TOKEN: ${VITE_DEBUG_ADMIN_TOKEN:-}
         CACHE_BUST: ${CACHE_BUST:-1}
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${APP_PORT:-8080}:80"
     depends_on:

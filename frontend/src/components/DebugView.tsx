@@ -104,10 +104,15 @@ export default function DebugView({
       const result = await runDebugUpdate(mode);
       setUpdateResult(result);
       if (!result.ok) {
-        setUpdateError(result.error || 'Une étape a échoué');
+        const raw = result.error || 'Une étape a échoué';
+        if (raw.includes('spawn git ENOENT')) setUpdateError('La commande git a été lancée depuis le conteneur backend. Il faut démarrer la Host API sur l’hôte.');
+        else if (raw.includes('ECONNREFUSED')) setUpdateError('Host API indisponible sur l’hôte.');
+        else if (raw.includes('spawn docker ENOENT')) setUpdateError('Docker CLI introuvable sur l’hôte ou dans le PATH du service.');
+        else setUpdateError(raw);
       }
     } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : String(err));
+      const raw = err instanceof Error ? err.message : String(err);
+      setUpdateError(raw.includes('ECONNREFUSED') ? 'Host API indisponible sur l’hôte.' : raw);
     } finally {
       setUpdateLoading(null);
       void fetchHealth();
@@ -243,12 +248,11 @@ export default function DebugView({
               <summary>JSON brut</summary>
               <pre className="debug-pre">{JSON.stringify(health, null, 2)}</pre>
             </details>
-            {health.dockerPs && (
-              <details className="debug-details">
-                <summary>docker compose ps</summary>
-                <pre className="debug-pre">{health.dockerPs.stdout || health.dockerPs.stderr || health.dockerPs.error || '—'}</pre>
-              </details>
-            )}
+            <ul className="debug-list">
+              <li><span>Host API</span><strong>{health.hostApi?.available ? 'Disponible' : 'Indisponible'}</strong></li>
+              <li><span>URL Host API</span><strong>{health.hostApi?.url || '—'}</strong></li>
+            </ul>
+            {health.hostApi?.error && <div className="debug-error">{health.hostApi.error}</div>}
           </>
         ) : (
           !healthError && <div className="debug-muted">Aucune réponse pour l’instant.</div>
@@ -296,7 +300,7 @@ export default function DebugView({
           <button
             type="button"
             className="debug-btn primary"
-            disabled={updateLoading !== null}
+            disabled={updateLoading !== null || !health?.hostApi?.available}
             onClick={() => void handleUpdate('normal')}
           >
             {updateLoading === 'normal' ? 'Mise à jour…' : '⬆️ Mettre à jour l’app'}
@@ -304,12 +308,15 @@ export default function DebugView({
           <button
             type="button"
             className="debug-btn warning"
-            disabled={updateLoading !== null}
+            disabled={updateLoading !== null || !health?.hostApi?.available}
             onClick={() => void handleUpdate('force-pwa')}
           >
             {updateLoading === 'force-pwa' ? 'Mise à jour…' : '🚀 Mettre à jour + forcer PWA'}
           </button>
         </div>
+        {!health?.hostApi?.available && (
+          <div className="debug-error">Host API indisponible. Le service combar-debug-host-api n’est pas démarré sur l’hôte.</div>
+        )}
         {updateLoading && (
           <div className="debug-muted">Exécution en cours, peut prendre plusieurs minutes…</div>
         )}

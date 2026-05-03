@@ -1,0 +1,17 @@
+[Unit]
+Description=ComBar Debug Host API
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ComBar
+ExecStart=/usr/bin/node /opt/ComBar/host-tools/combar-debug-host-api.js
+Restart=always
+RestartSec=3
+Environment=COMBAR_ROOT=/opt/ComBar
+Environment=COMBAR_DEBUG_HOST_API_PORT=4878
+Environment=COMBAR_DEBUG_HOST_API_BIND=127.0.0.1
+
+[Install]
+WantedBy=multi-user.target

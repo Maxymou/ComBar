@@ -26,6 +26,7 @@ export const config = {
   debug: {
     adminToken: process.env.DEBUG_ADMIN_TOKEN || '',
     workdir: process.env.DEBUG_WORKDIR || '/opt/ComBar',
+    hostApiUrl: process.env.DEBUG_HOST_API_URL || 'http://host.docker.internal:4878',
     updateTimeoutMs: readInt('DEBUG_UPDATE_TIMEOUT_MS', 5 * 60 * 1000),
     maxLogBytes: readInt('DEBUG_MAX_LOG_BYTES', 64 * 1024),
   },
