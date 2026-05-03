@@ -4,7 +4,7 @@ import { useProducts } from './hooks/useProducts';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useRealtimeState, initPrices } from './hooks/useRealtimeState';
 import { useOrderBuilder } from './hooks/useOrderBuilder';
-import { savePendingOrder, getSetting, markOrdersSynced } from './services/db';
+import { savePendingOrder, getSetting, markOrdersSynced, saveSetting } from './services/db';
 import { submitOrder } from './services/api';
 import { DENOMINATIONS } from './data/denominations';
 import Header from './components/Header';
@@ -16,6 +16,7 @@ import PendingOrdersView from './components/PendingOrdersView';
 import BankView from './components/BankView';
 import SalesManagementView from './components/SalesManagementView';
 import DebugView from './components/DebugView';
+import AdminPasswordView from './components/AdminPasswordView';
 import SideDrawer, { View } from './components/SideDrawer';
 import { isDebugViewportEnabled } from './debug';
 import './App.css';
@@ -377,6 +378,20 @@ export default function App() {
               buildTimestamp={buildTimestamp}
               pwaEnabled={pwaEnabled}
               onForceSync={forceSync}
+              onGoBack={() => {
+                setView('order');
+                setScreen('select');
+              }}
+            />
+          )}
+
+          {view === 'adminPassword' && (
+            <AdminPasswordView
+              adminPin={adminPin}
+              onAdminPinChanged={nextPin => {
+                setAdminPin(nextPin);
+                void saveSetting('adminPin', nextPin);
+              }}
               onGoBack={() => {
                 setView('order');
                 setScreen('select');
