@@ -10,7 +10,8 @@ type View =
   | 'sync'
   | 'bank'
   | 'salesManagement'
-  | 'debug';
+  | 'debug'
+  | 'adminPassword';
 
 interface DrawerItem {
   id: View;
@@ -67,6 +68,7 @@ const ADMIN_MENU_ITEMS: DrawerItem[] = [
   { id: 'prices', label: 'Gestion des prix', icon: '💰', enabled: true },
   { id: 'salesManagement', label: 'Gestion des produits', icon: '🧾', enabled: true },
   { id: 'sync', label: 'Commandes en attente', icon: '🔁', enabled: true },
+  { id: 'adminPassword', label: 'Modifier le MDP', icon: '🔑', enabled: true },
   { id: 'debug', label: 'Débug', icon: '🛠️', enabled: true },
 ];
 
