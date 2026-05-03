@@ -22,6 +22,8 @@ interface DebugViewProps {
   onGoBack: () => void;
 }
 
+type UpdateTransientState = 'probable-restart' | 'healthy-again' | null;
+
 function formatBoolean(value: boolean): string {
   return value ? 'Oui' : 'Non';
 }
@@ -61,6 +63,7 @@ export default function DebugView({
   const [updateResult, setUpdateResult] = useState<DebugUpdateResponse | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [updateLoading, setUpdateLoading] = useState<DebugUpdateMode | null>(null);
+  const [updateTransientState, setUpdateTransientState] = useState<UpdateTransientState>(null);
 
   const [copyMessage, setCopyMessage] = useState<string>('');
 
@@ -89,6 +92,37 @@ export default function DebugView({
     void fetchHealth();
   }, [fetchHealth]);
 
+  const isTransientUpdateError = useCallback((raw: string): boolean => {
+    const text = raw.toLowerCase();
+    return (
+      text.includes('http 502') ||
+      text.includes('http 504') ||
+      text.includes('fetch failed') ||
+      text.includes('failed to fetch') ||
+      text.includes('networkerror') ||
+      text.includes('<html') ||
+      text.includes('nginx')
+    );
+  }, []);
+
+  useEffect(() => {
+    if (updateTransientState !== 'probable-restart') return;
+    const timer = window.setInterval(() => {
+      void getDebugHealth()
+        .then((data) => {
+          if (!data.ok) return;
+          setHealth(data);
+          setHealthError(null);
+          setUpdateTransientState('healthy-again');
+          window.clearInterval(timer);
+        })
+        .catch(() => {
+          // serveur encore en redémarrage
+        });
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [updateTransientState]);
+
   const handleUpdate = useCallback(async (mode: DebugUpdateMode) => {
     if (updateLoading) return;
     const confirmMessage =
@@ -100,6 +134,7 @@ export default function DebugView({
     setUpdateLoading(mode);
     setUpdateError(null);
     setUpdateResult(null);
+    setUpdateTransientState(null);
     try {
       const result = await runDebugUpdate(mode);
       setUpdateResult(result);
@@ -112,12 +147,16 @@ export default function DebugView({
       }
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err);
-      setUpdateError(raw.includes('ECONNREFUSED') ? 'Host API indisponible sur l’hôte.' : raw);
+      if (isTransientUpdateError(raw)) {
+        setUpdateTransientState('probable-restart');
+      } else {
+        setUpdateError(raw.includes('ECONNREFUSED') ? 'Host API indisponible sur l’hôte.' : raw);
+      }
     } finally {
       setUpdateLoading(null);
       void fetchHealth();
     }
-  }, [updateLoading, fetchHealth]);
+  }, [updateLoading, fetchHealth, isTransientUpdateError]);
 
   const copyToClipboard = useCallback(async (label: string, value: unknown) => {
     try {
@@ -332,6 +371,20 @@ export default function DebugView({
         )}
         {updateError && (
           <div className="debug-error">Erreur : {updateError}</div>
+        )}
+        {updateTransientState && (
+          <div className="debug-muted">
+            {updateTransientState === 'probable-restart'
+              ? 'Mise à jour probablement en cours. Le serveur redémarre, actualise la page dans quelques instants.'
+              : 'Mise à jour terminée, serveur disponible.'}
+          </div>
+        )}
+        {(updateTransientState === 'probable-restart' || updateTransientState === 'healthy-again') && (
+          <div className="debug-actions">
+            <button type="button" className="debug-btn" onClick={() => window.location.reload()}>
+              {updateTransientState === 'healthy-again' ? 'Rafraîchir l’application' : 'Rafraîchir la page'}
+            </button>
+          </div>
         )}
         {updateResult && (
           <>

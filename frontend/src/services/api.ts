@@ -231,7 +231,9 @@ export async function runDebugUpdate(mode: DebugUpdateMode): Promise<DebugUpdate
     if (parsed) {
       return parsed;
     }
-    throw new Error(`HTTP ${res.status} ${text}`);
+    const lowered = text.toLowerCase();
+    const isHtml = lowered.includes('<html') || lowered.includes('<!doctype html') || lowered.includes('nginx');
+    throw new Error(isHtml ? `HTTP ${res.status} passerelle indisponible` : `HTTP ${res.status} ${text}`);
   }
   if (!parsed) {
     throw new Error('Réponse invalide du serveur');
