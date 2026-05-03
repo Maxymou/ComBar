@@ -503,19 +503,16 @@ body::before{
 .app.hh .card.on-drink { border-color: #FF2079; background: #160010; }
 .card.on-food  { border-color: #FF9800; background: #181000; }
 
-.card-icon {
-  width: 2.4rem;
-  height: 2.4rem;
-  max-height: 2.4rem;
+.select-screen .card-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.9rem;
   line-height: 1;
-  margin-bottom: 0.3rem;
+  overflow: hidden;
   flex-shrink: 0;
 }
-.card-icon span {
+.select-screen .card-icon span {
   font-size: inherit;
   line-height: 1;
 }
@@ -2607,11 +2604,11 @@ body::before{
   }
 }
 
-.card-icon .product-icon-image {
-  width: 2.2rem;
-  height: 2.2rem;
-  max-width: 2.2rem;
-  max-height: 2.2rem;
+.select-screen .card-icon .product-icon-image {
+  width: auto;
+  height: 1.9rem;
+  max-width: 100%;
+  max-height: 1.9rem;
   object-fit: contain;
   display: block;
 }
