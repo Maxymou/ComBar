@@ -1,4 +1,5 @@
 import { Product } from '../types';
+import ProductIcon from './ProductIcon';
 
 interface ProductCardProps {
   item: Product;
@@ -26,7 +27,7 @@ export default function ProductCard({ item, qty, price, isHH, onAdd, onRemove }:
       {qty > 0 && (
         <button className="minus-btn" onClick={e => { e.stopPropagation(); onRemove(); }} type="button">−</button>
       )}
-      <span className="card-icon">{item.icon}</span>
+      <span className="card-icon"><ProductIcon product={item} /></span>
       <span className="card-name">{item.name}</span>
       <span className="card-price" style={{ visibility: qty > 0 ? 'hidden' : 'visible' }}>{priceLabel}</span>
     </button>

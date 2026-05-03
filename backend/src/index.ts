@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import path from 'node:path';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
 import healthRouter from './routes/health';
@@ -31,6 +32,7 @@ app.use(pinoHttp({
 }));
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 const presenceRegistry = new PresenceRegistry();
 const realtimeServer = new RealtimeServer();

@@ -1,4 +1,5 @@
-import { OrderLine } from '../types';
+import { OrderLine, Product } from '../types';
+import ProductIcon from './ProductIcon';
 import { getCategoryMeta, normalizeCategory } from '../utils/categories';
 
 interface SummaryProps {

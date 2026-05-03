@@ -64,6 +64,8 @@ DO $$ BEGIN
 END $$;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_priced BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS bonus_parent_product_id VARCHAR(50) REFERENCES products(id);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS icon_type VARCHAR(20) NOT NULL DEFAULT 'emoji';
+ALTER TABLE products ADD COLUMN IF NOT EXISTS icon_url TEXT;
 `;
 
 const SEED_SQL = `
@@ -75,23 +77,25 @@ INSERT INTO categories (id, name, display_order) VALUES
   (5, 'sandwich', 4)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO products (id, name, icon, normal_price, hh_price, hh_bonus, category_id, display_order, active, bonus_parent_product_id) VALUES
-  ('biere25',        'Bière 25cl',   '🍺', 2,  2,  true,  1, 0, true, 'biere50'),
-  ('biere50',        'Bière 50cl',   '🍺', 4,  2,  true,  1, 1, true, null),
-  ('pichet',         'Pichet 1,5L',  '🍻', 10, 10, true,  1, 2, true, null),
-  ('shooter',        'Shooter',      '🥃', 1,  1,  false, 1, 3, true, null),
-  ('vinRouge',       'Vin Rouge',    '🍷', 2,  2,  false, 1, 4, true, null),
-  ('vinBlanc',       'Vin Blanc',    '🥂', 2,  2,  false, 1, 5, true, null),
-  ('consigne25',     'Csg. 25cl',    '🫙', 1,  1,  false, 2, 0, true, null),
-  ('consigne50',     'Csg. 50cl',    '🫙', 2,  2,  false, 2, 1, true, null),
-  ('consignePichet', 'Csg. Pichet',  '🪣', 5,  5,  false, 2, 2, true, null),
-  ('kebab',          'Kebab',        '🥙', 5,  5,  false, 3, 0, true, null),
-  ('vege',           'Végé',         '🥗', 5,  5,  false, 3, 1, true, null),
-  ('coca',           'Coca',         '🥤', 2,  2,  false, 4, 0, true, null),
-  ('jambonBeurre',   'Jambon beurre','🥪', 5,  5,  false, 5, 0, true, null)
+INSERT INTO products (id, name, icon, icon_type, icon_url, normal_price, hh_price, hh_bonus, category_id, display_order, active, bonus_parent_product_id) VALUES
+  ('biere25',        'Bière 25cl',   '🍺', 'emoji', null, 2,  2,  true,  1, 0, true, 'biere50'),
+  ('biere50',        'Bière 50cl',   '🍺', 'emoji', null, 4,  2,  true,  1, 1, true, null),
+  ('pichet',         'Pichet 1,5L',  '🍻', 'emoji', null, 10, 10, true,  1, 2, true, null),
+  ('shooter',        'Shooter',      '🥃', 'emoji', null, 1,  1,  false, 1, 3, true, null),
+  ('vinRouge',       'Vin Rouge',    '🍷', 'emoji', null, 2,  2,  false, 1, 4, true, null),
+  ('vinBlanc',       'Vin Blanc',    '🥂', 'emoji', null, 2,  2,  false, 1, 5, true, null),
+  ('consigne25',     'Csg. 25cl',    '🫙', 'emoji', null, 1,  1,  false, 2, 0, true, null),
+  ('consigne50',     'Csg. 50cl',    '🫙', 'emoji', null, 2,  2,  false, 2, 1, true, null),
+  ('consignePichet', 'Csg. Pichet',  '🪣', 'emoji', null, 5,  5,  false, 2, 2, true, null),
+  ('kebab',          'Kebab',        '🥙', 'emoji', null, 5,  5,  false, 3, 0, true, null),
+  ('vege',           'Végé',         '🥗', 'emoji', null, 5,  5,  false, 3, 1, true, null),
+  ('coca',           'Coca',         '🥤', 'emoji', null, 2,  2,  false, 4, 0, true, null),
+  ('jambonBeurre',   'Jambon beurre','🥪', 'emoji', null, 5,  5,  false, 5, 0, true, null)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   icon = EXCLUDED.icon,
+  icon_type = EXCLUDED.icon_type,
+  icon_url = EXCLUDED.icon_url,
   normal_price = EXCLUDED.normal_price,
   hh_price = EXCLUDED.hh_price,
   hh_bonus = EXCLUDED.hh_bonus,

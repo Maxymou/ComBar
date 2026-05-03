@@ -128,6 +128,18 @@ export async function createProduct(payload: ProductManagementPayload): Promise<
   return res.json();
 }
 
+export async function uploadProductImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/api/products/upload`, { method: 'POST', body: formData });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  const body = await res.json() as { url: string };
+  return body.url;
+}
+
 export async function updateProduct(id: string, payload: ProductManagementPayload): Promise<Product> {
   const res = await fetch(`${API_BASE}/api/products/${id}`, {
     method: 'PUT',
