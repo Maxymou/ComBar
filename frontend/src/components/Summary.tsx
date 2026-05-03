@@ -10,13 +10,14 @@ interface SummaryProps {
   onCheckItem: (id: string, max: number) => void;
   onUncheckItem: (id: string) => void;
   onGoPayment: () => void;
+  onConfirmPayment: () => void;
   onGoBack: () => void;
   onReset: () => void;
 }
 
 export default function Summary({
   lines, bonusShooters, total, checked, isHH,
-  onCheckItem, onUncheckItem, onGoPayment, onGoBack, onReset,
+  onCheckItem, onUncheckItem, onGoPayment, onConfirmPayment, onGoBack, onReset,
 }: SummaryProps) {
   const totalChecked = lines.filter(l => !l.isBonus).reduce((s, l) => s + (checked[l.productId] || 0), 0);
   const totalToCheck = lines.filter(l => !l.isBonus).reduce((s, l) => s + l.quantity, 0);
@@ -116,6 +117,14 @@ export default function Summary({
         )}
       </div>
 
+      <button
+        className="btn-confirm btn-confirm-ready summary-cash-btn"
+        onClick={onConfirmPayment}
+        disabled={total <= 0}
+        type="button"
+      >
+        Encaisser
+      </button>
       <button className="btn-monnaies" onClick={onGoPayment}>
         Monnaie
       </button>
