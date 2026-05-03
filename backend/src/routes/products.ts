@@ -1,7 +1,6 @@
-import { Router, Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import multer from 'multer';
 import pool from '../db/pool';
 import { RealtimeServer } from '../realtime/server';
 import { logger } from '../logger';
@@ -10,20 +9,11 @@ const router = Router();
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads/products');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-    filename: (_req, file, cb) => {
-      const base = slugify(path.parse(file.originalname).name) || 'product';
-      cb(null, `${base}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`);
-    },
-  }),
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype !== 'image/png') return cb(new Error('Seuls les fichiers PNG sont autorisés.'));
-    cb(null, true);
-  },
+const pngUploadParser = express.raw({
+  type: ['image/png', 'application/octet-stream'],
+  limit: '2mb',
 });
+
 
 function mapProductRow(r: any) {
   return {
@@ -53,16 +43,40 @@ FROM products p
 JOIN categories c ON p.category_id = c.id
 LEFT JOIN products bp ON bp.id = p.bonus_parent_product_id`;
 
-router.post('/api/products/upload', (req, res) => {
-  upload.single('file')(req, res, err => {
-    if (err) {
-      if ((err as { code?: string }).code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Le fichier PNG dépasse la taille maximum de 2 Mo.' });
-      return res.status(400).json({ error: err.message || 'Upload invalide' });
-    }
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: 'Aucun fichier reçu.' });
-    return res.status(201).json({ url: `/uploads/products/${file.filename}` });
-  });
+router.post('/api/products/upload', pngUploadParser, async (req: Request, res: Response) => {
+  const body = req.body;
+
+  if (!Buffer.isBuffer(body) || body.length === 0) {
+    return res.status(400).json({ error: 'Aucun fichier reçu.' });
+  }
+
+  const isPng =
+    body.length >= 8 &&
+    body[0] === 0x89 &&
+    body[1] === 0x50 &&
+    body[2] === 0x4e &&
+    body[3] === 0x47 &&
+    body[4] === 0x0d &&
+    body[5] === 0x0a &&
+    body[6] === 0x1a &&
+    body[7] === 0x0a;
+
+  if (!isPng) {
+    return res.status(400).json({ error: 'Seuls les fichiers PNG sont autorisés.' });
+  }
+
+  const originalName = String(req.headers['x-file-name'] || 'product.png');
+  const base = slugify(path.parse(originalName).name) || 'product';
+  const filename = `${base}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+  const filepath = path.join(UPLOAD_DIR, filename);
+
+  try {
+    await fs.promises.writeFile(filepath, body);
+    return res.status(201).json({ url: `/uploads/products/${filename}` });
+  } catch (err) {
+    logger.error({ err }, 'Failed to store product image upload');
+    return res.status(500).json({ error: "Échec de l'enregistrement du fichier." });
+  }
 });
 
 router.get('/api/products', async (_req, res) => {
