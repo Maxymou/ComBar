@@ -235,7 +235,8 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
       setIsReorderMode(false);
       await onProductsChanged();
       setSuccess('Ordre des produits enregistré.');
-    } catch {
+    } catch (err) {
+      console.error('Failed to save product order', err);
       setError('Impossible d’enregistrer le nouvel ordre.');
     } finally {
       setIsSavingOrder(false);

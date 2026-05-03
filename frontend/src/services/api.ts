@@ -150,5 +150,8 @@ export async function reorderProducts(items: { id: string; displayOrder: number 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ items }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${body}`);
+  }
 }
