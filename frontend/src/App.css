@@ -504,15 +504,15 @@ body::before{
 .card.on-food  { border-color: #FF9800; background: #181000; }
 
 .card-icon {
-  width: 3.2rem;
-  height: 3.2rem;
-  min-height: 3.2rem;
-  max-height: 3.2rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  max-height: 2.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.9rem;
   line-height: 1;
+  margin-bottom: 0.3rem;
   flex-shrink: 0;
 }
 .card-icon span {
@@ -2608,10 +2608,10 @@ body::before{
 }
 
 .card-icon .product-icon-image {
-  width: 2.6rem;
-  height: 2.6rem;
-  max-width: 2.6rem;
-  max-height: 2.6rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  max-width: 2.2rem;
+  max-height: 2.2rem;
   object-fit: contain;
   display: block;
 }
