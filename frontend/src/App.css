@@ -1569,3 +1569,238 @@ body::before{
   background: #232323;
   color: #fff;
 }
+
+/* Debug view */
+.debug-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 10px calc(20px + env(safe-area-inset-bottom));
+  color: #f0f6fc;
+}
+
+.debug-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.debug-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #f5f5f5;
+}
+
+.debug-subtitle {
+  color: #9a9a9a;
+  font-size: 0.85rem;
+}
+
+.debug-toast {
+  position: sticky;
+  top: 0;
+  align-self: center;
+  background: #0a2a14;
+  color: #8dffb0;
+  border: 1px solid #2ecc71;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  z-index: 5;
+}
+
+.debug-card {
+  background: #171717;
+  border: 1px solid #313131;
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.debug-card-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffd64a;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.debug-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.debug-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid #232323;
+  font-size: 0.88rem;
+}
+
+.debug-list li:last-child {
+  border-bottom: none;
+}
+
+.debug-list li span {
+  color: #9a9a9a;
+  flex-shrink: 0;
+}
+
+.debug-list li strong {
+  color: #f5f5f5;
+  text-align: right;
+  word-break: break-word;
+  font-weight: 700;
+}
+
+.debug-list-multiline {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+}
+
+.debug-list-multiline code {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 0.78rem;
+  color: #c0c0c0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  width: 100%;
+}
+
+.debug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.debug-btn {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  background: #232323;
+  color: #fff;
+  font-weight: 700;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  flex: 1 1 auto;
+  min-width: 140px;
+}
+
+.debug-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.debug-btn.primary {
+  background: linear-gradient(135deg, #ffda4a, #f6bb00);
+  color: #121212;
+  border-color: #f6bb00;
+}
+
+.debug-btn.warning {
+  background: linear-gradient(135deg, #ff8a4a, #e25a00);
+  color: #121212;
+  border-color: #e25a00;
+}
+
+.debug-error {
+  background: #2a0f0f;
+  color: #fc8181;
+  border: 1px solid #5a1f1f;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+
+.debug-muted {
+  color: #9a9a9a;
+  font-size: 0.85rem;
+}
+
+.debug-details {
+  background: #0f0f0f;
+  border: 1px solid #2b2b2b;
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.debug-details summary {
+  cursor: pointer;
+  color: #d8d8d8;
+  font-size: 0.85rem;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.debug-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.debug-details summary::before {
+  content: '▸ ';
+  color: #ffd64a;
+}
+
+.debug-details[open] summary::before {
+  content: '▾ ';
+}
+
+.debug-pre {
+  background: #080d12;
+  border: 1px solid #2a3444;
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 6px;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #c0c0c0;
+}
+
+.debug-device-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.debug-device-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #0f0f0f;
+  border: 1px solid #2b2b2b;
+  font-size: 0.85rem;
+}
+
+.debug-device-name {
+  font-weight: 700;
+  color: #f5f5f5;
+}
+
+.debug-device-id {
+  color: #9a9a9a;
+  font-family: 'DM Mono', monospace;
+}

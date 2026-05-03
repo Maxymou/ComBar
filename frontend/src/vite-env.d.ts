@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_BUILD_TIMESTAMP?: string;
   readonly VITE_SYNC_INTERVAL_MS?: string;
   readonly VITE_SYNC_MAX_AUTO_RETRIES?: string;
+  readonly VITE_CACHE_BUST?: string;
+  readonly VITE_DEBUG_ADMIN_TOKEN?: string;
 }
 
 interface ImportMeta {

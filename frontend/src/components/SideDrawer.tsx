@@ -10,7 +10,8 @@ type View =
   | 'sync'
   | 'bank'
   | 'salesManagement'
-  | 'settings';
+  | 'settings'
+  | 'debug';
 
 interface DrawerItem {
   id: View;
@@ -68,6 +69,7 @@ function formatLastSeen(isoDate: string): string {
 const ADMIN_MENU_ITEMS: DrawerItem[] = [
   { id: 'prices', label: 'Gestion des prix', icon: '💰', enabled: true },
   { id: 'sync', label: 'Commandes en attente', icon: '🔁', enabled: true },
+  { id: 'debug', label: 'Débug', icon: '🛠️', enabled: true },
 ];
 
 export default function SideDrawer({

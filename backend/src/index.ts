@@ -4,6 +4,7 @@ import pinoHttp from 'pino-http';
 import healthRouter from './routes/health';
 import productsRouter from './routes/products';
 import ordersRouter from './routes/orders';
+import debugRouter from './routes/debug';
 import { initDatabase } from './db/init';
 import pool from './db/pool';
 import {
@@ -54,6 +55,11 @@ app.locals.realtimeServer = realtimeServer;
 app.use(healthRouter);
 app.use(productsRouter);
 app.use(ordersRouter);
+app.use(debugRouter);
+
+if (!config.debug.adminToken) {
+  logger.warn('DEBUG_ADMIN_TOKEN n’est pas défini : les routes /api/debug/* sont accessibles sans authentification. Ne pas exposer en public.');
+}
 
 function buildPresenceState(): RealtimeState {
   const snapshot = presenceRegistry.snapshot();

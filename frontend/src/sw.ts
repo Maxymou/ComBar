@@ -12,9 +12,11 @@ declare let self: ServiceWorkerGlobalScope & {
 };
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
-const STATIC_CACHE = `combar-static-v${APP_VERSION}`;
-const API_CACHE = `combar-api-v${APP_VERSION}`;
-const SHELL_CACHE = `combar-shell-v${APP_VERSION}`;
+const CACHE_BUST = import.meta.env.VITE_CACHE_BUST || '0';
+const CACHE_TAG = `${APP_VERSION}-${CACHE_BUST}`;
+const STATIC_CACHE = `combar-static-v${CACHE_TAG}`;
+const API_CACHE = `combar-api-v${CACHE_TAG}`;
+const SHELL_CACHE = `combar-shell-v${CACHE_TAG}`;
 const CURRENT_CACHES = new Set([STATIC_CACHE, API_CACHE, SHELL_CACHE]);
 
 self.skipWaiting();

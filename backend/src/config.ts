@@ -23,5 +23,12 @@ export const config = {
     waitDelayMs: readInt('DB_WAIT_DELAY_MS', 2000),
   },
 
+  debug: {
+    adminToken: process.env.DEBUG_ADMIN_TOKEN || '',
+    workdir: process.env.DEBUG_WORKDIR || '/opt/ComBar',
+    updateTimeoutMs: readInt('DEBUG_UPDATE_TIMEOUT_MS', 5 * 60 * 1000),
+    maxLogBytes: readInt('DEBUG_MAX_LOG_BYTES', 64 * 1024),
+  },
+
   logLevel: process.env.LOG_LEVEL || 'info',
 };

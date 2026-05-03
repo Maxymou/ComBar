@@ -87,6 +87,30 @@ docker compose down
 docker compose up -d --build
 ```
 
+### Mise à jour en production
+
+L'application est conçue pour tourner dans `/opt/ComBar` avec Docker Compose.
+
+**Mise à jour normale**
+
+```bash
+cd /opt/ComBar
+git pull
+docker compose up -d --build
+```
+
+**Mise à jour avec rebuild forcé de la PWA** (nouveau hash de précache, le Service Worker propose la mise à jour aux clients) :
+
+```bash
+cd /opt/ComBar
+git pull origin main
+CACHE_BUST=$(date +%s) docker compose up -d --build
+docker compose ps
+curl http://127.0.0.1:8080/health
+```
+
+Ces deux commandes peuvent aussi être déclenchées depuis l'application via le menu **Administration > Débug**.
+
 ### Réinitialiser la base de données
 
 ```bash
@@ -105,6 +129,10 @@ Copier `.env.example` en `.env` pour personnaliser :
 | `DB_PASSWORD` | `combar` | Mot de passe PostgreSQL |
 | `APP_PORT` | `8080` | Port d'accès à l'application |
 | `VITE_ENABLE_PWA` | `true` | Active le Service Worker et l'installabilité PWA du frontend |
+| `CACHE_BUST` | `1` | Token de bust du cache de build. Le passer à `$(date +%s)` force un rebuild PWA avec un nouveau hash de précache. |
+| `DEBUG_ADMIN_TOKEN` | _(vide)_ | Si défini, le backend exige `X-Debug-Token: <token>` pour `/api/debug/health` et `/api/debug/update`. Vide → routes accessibles sans authentification (warning au démarrage). |
+| `VITE_DEBUG_ADMIN_TOKEN` | _(vide)_ | Token envoyé automatiquement par le frontend en `X-Debug-Token`. Doit correspondre à `DEBUG_ADMIN_TOKEN` si la protection est activée. |
+| `DEBUG_WORKDIR` | `/opt/ComBar` | Répertoire dans lequel `git pull` et `docker compose` sont exécutés par les routes debug. |
 
 ## Ports exposés
 
@@ -179,6 +207,21 @@ Le PIN est stocké localement dans IndexedDB (clé `adminPin`).
 | GET | `/api/realtime/state` | Snapshot de l'état temps réel (prix, happy hour, clients) |
 | POST | `/api/realtime/prices` | Publier les prix globaux |
 | POST | `/api/realtime/happy-hour` | Publier l'état Happy Hour global |
+| GET | `/api/debug/health` | Diagnostic backend (uptime, Node, DB, `docker compose ps`). Protégé par `X-Debug-Token` si `DEBUG_ADMIN_TOKEN` est défini. |
+| POST | `/api/debug/update` | Déclenche `git pull` + `docker compose up -d --build` (mode `normal` ou `force-pwa`). **Exécute des commandes serveur** : ne JAMAIS exposer publiquement et toujours configurer `DEBUG_ADMIN_TOKEN` en production. |
+
+### Page Débug (Administration > Débug)
+
+L'écran **Administration > Débug** rassemble :
+
+- l'état frontend (version build, timestamp, PWA, mode standalone, viewport, user-agent)
+- l'état backend retourné par `/api/debug/health` (uptime, Node, env, base de données)
+- l'état de synchronisation et les terminaux connectés
+- deux boutons de mise à jour serveur :
+  - **Mettre à jour l'app** → `git pull` + `docker compose up -d --build`
+  - **Mettre à jour + forcer la PWA** → idem avec `CACHE_BUST=$(date +%s)` pour invalider le précache du Service Worker
+
+> ⚠️ La page Débug est accessible derrière le PIN admin du frontend, mais ce n'est pas une vraie sécurité. En production, **toujours** définir `DEBUG_ADMIN_TOKEN` côté backend et `VITE_DEBUG_ADMIN_TOKEN` côté frontend, et **ne pas exposer le port 8080 publiquement**.
 
 ### Format d'une commande (POST /api/orders)
 

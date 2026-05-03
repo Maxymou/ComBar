@@ -15,6 +15,7 @@ import PriceEditor from './components/PriceEditor';
 import PendingOrdersView from './components/PendingOrdersView';
 import BankView from './components/BankView';
 import SalesManagementView from './components/SalesManagementView';
+import DebugView from './components/DebugView';
 import SideDrawer, { View } from './components/SideDrawer';
 import { isDebugViewportEnabled } from './debug';
 import './App.css';
@@ -344,7 +345,25 @@ export default function App() {
             />
           )}
 
-          {view !== 'order' && view !== 'prices' && view !== 'sync' && view !== 'bank' && view !== 'salesManagement' && (
+          {view === 'debug' && (
+            <DebugView
+              isOnline={isOnline}
+              pendingCount={pendingCount}
+              syncState={syncState}
+              onlineUsers={onlineUsers}
+              connectedDevices={connectedDevices}
+              buildVersion={buildVersion}
+              buildTimestamp={buildTimestamp}
+              pwaEnabled={pwaEnabled}
+              onForceSync={forceSync}
+              onGoBack={() => {
+                setView('order');
+                setScreen('select');
+              }}
+            />
+          )}
+
+          {view !== 'order' && view !== 'prices' && view !== 'sync' && view !== 'bank' && view !== 'salesManagement' && view !== 'debug' && (
             <div className="placeholder-view">
               <div className="placeholder-title">Écran à venir</div>
               <div className="placeholder-text">Cette section sera disponible prochainement.</div>
