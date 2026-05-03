@@ -315,7 +315,17 @@ export default function DebugView({
           </button>
         </div>
         {!health?.hostApi?.available && (
-          <div className="debug-error">Host API indisponible. Le service combar-debug-host-api n’est pas démarré sur l’hôte.</div>
+          <div className="debug-error">
+            Host API indisponible. Vérifie que le service combar-debug-host-api.service est démarré sur l’hôte
+            et qu’il écoute sur 0.0.0.0:4878.
+            <br />
+            <br />
+            systemctl status combar-debug-host-api.service --no-pager -l
+            <br />
+            curl http://127.0.0.1:4878/status
+            <br />
+            docker compose exec backend node -e "fetch('http://host.docker.internal:4878/status').then(r=&gt;r.text()).then(console.log).catch(console.error)"
+          </div>
         )}
         {updateLoading && (
           <div className="debug-muted">Exécution en cours, peut prendre plusieurs minutes…</div>
