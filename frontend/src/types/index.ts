@@ -39,6 +39,8 @@ export interface OrderLine {
   productId: string;
   productName: string;
   icon: string;
+  iconType?: 'emoji' | 'image';
+  iconUrl?: string | null;
   quantity: number;
   unitPrice: number;
   subtotal: number;

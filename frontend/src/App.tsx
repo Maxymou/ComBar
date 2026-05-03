@@ -170,6 +170,8 @@ export default function App() {
         productId: l.productId,
         productName: l.productName,
         icon: l.icon,
+        iconType: l.iconType || 'emoji',
+        iconUrl: l.iconUrl || null,
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         subtotal: l.subtotal,
