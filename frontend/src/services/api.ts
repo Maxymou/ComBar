@@ -129,9 +129,14 @@ export async function createProduct(payload: ProductManagementPayload): Promise<
 }
 
 export async function uploadProductImage(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', file);
-  const res = await fetch(`${API_BASE}/api/products/upload`, { method: 'POST', body: formData });
+  const res = await fetch(`${API_BASE}/api/products/upload`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': file.type || 'image/png',
+      'X-File-Name': file.name,
+    },
+    body: file,
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
     throw new Error(body.error || `HTTP ${res.status}`);
