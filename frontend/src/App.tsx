@@ -156,8 +156,7 @@ export default function App() {
     setIsDrawerOpen(false);
   }, []);
 
-  const handleConfirmPayment = useCallback(async () => {
-    const totalGiven = DENOMINATIONS.reduce((s, m) => s + m.value * (given[m.id] || 0), 0);
+  const submitPayment = useCallback(async (totalGiven: number) => {
     const change = Math.max(0, Math.round((totalGiven - total) * 100) / 100);
 
     const pendingOrder: PendingOrder = {
@@ -199,7 +198,27 @@ export default function App() {
       setConfirmFeedback(false);
       reset();
     }, 1500);
-  }, [given, total, isHH, lines, refreshPending, reset]);
+  }, [total, isHH, lines, refreshPending, reset]);
+
+  const handleConfirmPayment = useCallback(async () => {
+    const totalGiven = DENOMINATIONS.reduce((s, m) => s + m.value * (given[m.id] || 0), 0);
+    await submitPayment(totalGiven);
+  }, [given, submitPayment]);
+
+  const handleQuickConfirmPayment = useCallback(async () => {
+    await submitPayment(total);
+  }, [submitPayment, total]);
+
+  const handlePullRefresh = useCallback(async () => {
+    try {
+      await Promise.allSettled([
+        Promise.resolve(forceSync()),
+        refreshProducts(),
+      ]);
+    } catch {
+      // Errors are surfaced via the sync state indicators
+    }
+  }, [forceSync, refreshProducts]);
 
   if (confirmFeedback) {
     return (
@@ -242,6 +261,7 @@ export default function App() {
           isHH={isHH}
           onToggleHH={toggleHH}
           onOpenMenu={() => setIsDrawerOpen(true)}
+          onPullRefresh={handlePullRefresh}
         />
 
         <main className={`app-content${viewportDebug ? ' viewport-debug-content' : ''}`} data-screen={screen}>
@@ -270,6 +290,7 @@ export default function App() {
                   onCheckItem={checkItem}
                   onUncheckItem={uncheckItem}
                   onGoPayment={() => { setGiven({}); setScreen('monnaie'); }}
+                  onConfirmPayment={handleQuickConfirmPayment}
                   onGoBack={() => setScreen('select')}
                   onReset={reset}
                 />
@@ -363,22 +384,6 @@ export default function App() {
             />
           )}
 
-          {view !== 'order' && view !== 'prices' && view !== 'sync' && view !== 'bank' && view !== 'salesManagement' && view !== 'debug' && (
-            <div className="placeholder-view">
-              <div className="placeholder-title">Écran à venir</div>
-              <div className="placeholder-text">Cette section sera disponible prochainement.</div>
-              <button
-                type="button"
-                className="placeholder-back-btn"
-                onClick={() => {
-                  setView('order');
-                  setScreen('select');
-                }}
-              >
-                Retour à la commande
-              </button>
-            </div>
-          )}
         </main>
       </div>
     </div>

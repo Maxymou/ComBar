@@ -247,7 +247,7 @@ export default function SalesManagementView({ onGoBack, onProductsChanged }: Sal
     <section className="sales-management-view">
       <header className="sales-management-header">
         <button type="button" className="placeholder-back-btn" onClick={onGoBack}>← Retour</button>
-        <h2>Gestion des ventes</h2>
+        <h2>Gestion des produits</h2>
         <p>Produits disponibles à la vente</p>
       </header>
 

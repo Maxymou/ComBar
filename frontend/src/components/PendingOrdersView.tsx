@@ -9,6 +9,14 @@ interface PendingOrdersViewProps {
   onGoBack: () => void;
 }
 
+const SYNC_STATE_LABEL: Record<string, string> = {
+  offline: 'Hors ligne',
+  syncing: 'Synchronisation…',
+  synced: 'Synchronisé',
+  pending: 'En attente',
+  error: 'Erreur réseau',
+};
+
 export default function PendingOrdersView({ syncState, pendingCount, onForceSync, onGoBack }: PendingOrdersViewProps) {
   const [orders, setOrders] = useState<PendingOrder[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,54 +43,67 @@ export default function PendingOrdersView({ syncState, pendingCount, onForceSync
     await refresh();
   }, [refresh]);
 
-  const handleRetry = useCallback(() => {
-    onForceSync();
-  }, [onForceSync]);
+  const stateLabel = SYNC_STATE_LABEL[syncState] || syncState;
+  const stateClass =
+    syncState === 'offline'
+      ? 'offline'
+      : syncState === 'syncing'
+        ? 'syncing'
+        : syncState === 'error' || syncState === 'pending'
+          ? 'pending'
+          : 'online';
 
   return (
-    <div className="pending-orders-view">
-      <div className="pending-orders-header">
-        <button type="button" className="placeholder-back-btn" onClick={onGoBack}>
-          ← Retour
-        </button>
-        <div className="pending-orders-title">Commandes en attente</div>
-        <div className="pending-orders-meta">
-          État : <strong>{syncState}</strong> · {pendingCount} en attente
+    <section className="pending-orders-view">
+      <header className="pending-orders-header">
+        <button type="button" className="btn-back pending-orders-back" onClick={onGoBack}>← Retour</button>
+        <h2 className="pending-orders-title">Commandes en attente</h2>
+        <div className="pending-orders-status">
+          <span className={`pending-orders-dot ${stateClass}`} aria-hidden="true" />
+          <span className="pending-orders-status-label">{stateLabel}</span>
+          <span className="pending-orders-counter">{pendingCount} en attente</span>
         </div>
         <div className="pending-orders-actions">
-          <button type="button" onClick={handleRetry}>Réessayer maintenant</button>
-          <button type="button" onClick={() => void refresh()} disabled={loading}>
+          <button type="button" className="pending-orders-btn primary" onClick={onForceSync}>
+            Réessayer maintenant
+          </button>
+          <button type="button" className="pending-orders-btn" onClick={() => void refresh()} disabled={loading}>
             {loading ? 'Chargement…' : 'Rafraîchir'}
           </button>
         </div>
-      </div>
+      </header>
 
       {orders.length === 0 ? (
-        <div className="pending-orders-empty">Aucune commande en attente.</div>
+        <div className="pending-orders-empty">
+          <span className="pending-orders-empty-icon" aria-hidden="true">✓</span>
+          <span>Aucune commande en attente</span>
+        </div>
       ) : (
         <ul className="pending-orders-list">
           {orders.map(o => (
-            <li key={o.id} className="pending-orders-item">
-              <div className="pending-orders-item-row">
-                <span className="pending-orders-item-total">{o.total.toFixed(2)} €</span>
-                <span className="pending-orders-item-date">{new Date(o.createdAt).toLocaleString()}</span>
+            <li key={o.id} className="pending-orders-card">
+              <div className="pending-orders-card-head">
+                <span className="pending-orders-card-total">{o.total.toFixed(2)} €</span>
+                <span className="pending-orders-card-date">{new Date(o.createdAt).toLocaleString()}</span>
               </div>
-              <div className="pending-orders-item-row">
-                <span>{o.lines.length} ligne(s)</span>
+              <div className="pending-orders-card-meta">
+                <span>{o.lines.length} ligne{o.lines.length > 1 ? 's' : ''}</span>
                 <span>Tentatives : {o.retries ?? 0}</span>
               </div>
               {o.lastError && (
-                <div className="pending-orders-item-error">
-                  Erreur : {o.lastError}
-                </div>
+                <div className="pending-orders-card-error">Erreur : {o.lastError}</div>
               )}
               {o.lastAttemptAt && (
-                <div className="pending-orders-item-attempt">
+                <div className="pending-orders-card-attempt">
                   Dernière tentative : {new Date(o.lastAttemptAt).toLocaleString()}
                 </div>
               )}
-              <div className="pending-orders-item-actions">
-                <button type="button" onClick={() => void handleDelete(o.id)}>
+              <div className="pending-orders-card-actions">
+                <button
+                  type="button"
+                  className="pending-orders-btn danger"
+                  onClick={() => void handleDelete(o.id)}
+                >
                   Supprimer
                 </button>
               </div>
@@ -90,6 +111,6 @@ export default function PendingOrdersView({ syncState, pendingCount, onForceSync
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

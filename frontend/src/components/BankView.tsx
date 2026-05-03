@@ -1,4 +1,4 @@
-import { useCallback, useState, type CSSProperties } from "react";
+import { useCallback, useState } from "react";
 
 type MoneyItemType = "bill" | "coin";
 
@@ -45,10 +45,6 @@ interface TicketDividerProps {
   dashed?: boolean;
 }
 
-interface SectionLabelProps {
-  label: string;
-}
-
 interface SettingRowProps {
   item: MoneyItem;
   val: number;
@@ -69,29 +65,6 @@ const ITEMS_DEFAULT: MoneyItem[] = [
   { id: "2c", label: "2 ¢", value: 0.02, type: "coin", defaultPack: 50 },
   { id: "1c", label: "1 ¢", value: 0.01, type: "coin", defaultPack: 50 },
 ];
-
-const C = {
-  bg: "#080d12",
-  bgRow: "#080d12",
-  bgRowActive: "#07200f",
-  bgSection: "#0e1520",
-  bgHeader: "#0e1520",
-  bgFooter: "#0e1520",
-  border: "#2a3444",
-  borderLight: "#1a2233",
-  textPrimary: "#f0f6fc",
-  textSecond: "#b0bec5",
-  textMuted: "#6e8099",
-  textDisabled: "#3d4f63",
-  bill: "#7ec8ff",
-  coin: "#ffc947",
-  green: "#4ade80",
-  gold: "#fbbf24",
-  red: "#fc8181",
-  blue: "#60aeff",
-};
-
-const GRID = "58px 1fr 1fr 1fr";
 
 const fmt = (n: number): string =>
   `${n.toLocaleString("fr-FR", {
@@ -184,68 +157,28 @@ export default function BankView({ onGoBack }: BankViewProps) {
   };
 
   return (
-    <div
-      style={{
-        fontFamily: "'DM Mono', 'Courier New', monospace",
-        background: C.bg,
-        height: "100%",
-        minHeight: 0,
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        color: C.textPrimary,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 16px 8px",
-          borderBottom: `1px solid ${C.border}`,
-          flexShrink: 0,
-          background: C.bgHeader,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <button onClick={onGoBack} style={btn(C.bgSection, C.textSecond, C.border)}>
-            ←
-          </button>
-          <div>
-            <div style={{ fontSize: "12px", color: C.textMuted, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-              Comptabilité
-            </div>
-            <div style={{ fontSize: "22px", fontWeight: 700, color: C.blue, letterSpacing: "-0.02em" }}>
-              Banque
-            </div>
-          </div>
+    <section className="bank-view screen-wrapper">
+      <header className="bank-header">
+        <button type="button" className="btn-back bank-back" onClick={onGoBack}>← Retour</button>
+        <div className="bank-title-block">
+          <span className="bank-eyebrow">Comptabilité</span>
+          <h2 className="bank-title">Banque</h2>
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <button onClick={reset} style={btn(C.bgSection, C.textSecond, C.border)}>↺ Raz</button>
-          <button onClick={openSettings} style={btn("#0f1e35", C.blue, "#1e3a5f")}>⚙ Réglages</button>
+        <div className="bank-header-actions">
+          <button type="button" className="bank-tool-btn" onClick={reset}>↺ Raz</button>
+          <button type="button" className="bank-tool-btn primary" onClick={openSettings}>⚙ Réglages</button>
         </div>
+      </header>
+
+      <div className="bank-list-head">
+        <span>Valeur</span>
+        <span>Qté</span>
+        <span>Liasses / Rouleaux</span>
+        <span>Somme</span>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: GRID,
-          padding: "5px 16px",
-          borderBottom: `1px solid ${C.border}`,
-          flexShrink: 0,
-          background: C.bgSection,
-        }}
-      >
-        <div style={colHead(C)}>Valeur</div>
-        <div style={{ ...colHead(C), textAlign: "center" }}>Qté</div>
-        <div style={{ ...colHead(C), textAlign: "center" }}>Liasses / Rouleaux</div>
-        <div style={{ ...colHead(C), textAlign: "right" }}>Somme</div>
-      </div>
-
-      <div style={{ overflowY: "auto", flexGrow: 1, minHeight: 0 }}>
-        <SectionLabel label="▬ BILLETS" />
+      <div className="bank-list">
+        <div className="bank-section-label">Billets</div>
         {ITEMS_DEFAULT.filter((i) => i.type === "bill").map((item) => (
           <Row
             key={item.id}
@@ -256,7 +189,7 @@ export default function BankView({ onGoBack }: BankViewProps) {
             onChange={handleQty}
           />
         ))}
-        <SectionLabel label="● PIÈCES" />
+        <div className="bank-section-label">Pièces</div>
         {ITEMS_DEFAULT.filter((i) => i.type === "coin").map((item) => (
           <Row
             key={item.id}
@@ -269,94 +202,30 @@ export default function BankView({ onGoBack }: BankViewProps) {
         ))}
       </div>
 
-      <div
-        style={{
-          borderTop: `2px solid ${C.border}`,
-          padding: "12px 16px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexShrink: 0,
-          background: C.bgFooter,
-          gap: "10px",
-        }}
-      >
+      <div className="bank-footer">
+        <div className="bank-total-block">
+          <span className="bank-total-label">Total caisse</span>
+          <span className={`bank-total-amount${total > 0 ? ' positive' : ''}`}>{fmt(total)}</span>
+        </div>
         <button
+          type="button"
+          className={`bank-save-btn${total > 0 ? ' ready' : ''}`}
           onClick={handleSave}
           disabled={total === 0}
-          style={{
-            padding: "10px 16px",
-            background: total > 0 ? "#0a2a14" : C.bgSection,
-            border: `1px solid ${total > 0 ? "#2ecc71" : C.border}`,
-            borderRadius: "8px",
-            color: total > 0 ? C.green : C.textDisabled,
-            fontFamily: "'DM Mono', monospace",
-            fontSize: "13px",
-            fontWeight: 700,
-            cursor: total > 0 ? "pointer" : "default",
-            letterSpacing: "0.04em",
-            transition: "all 0.2s",
-            whiteSpace: "nowrap",
-          }}
         >
-          🖨 Enregistrer
+          Enregistrer
         </button>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-          <span style={{ fontSize: "11px", color: C.textSecond, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-            Total caisse
-          </span>
-          <span
-            style={{
-              fontSize: "26px",
-              fontWeight: 700,
-              color: total > 0 ? C.green : C.textDisabled,
-              letterSpacing: "-0.03em",
-              lineHeight: 1.1,
-            }}
-          >
-            {fmt(total)}
-          </span>
-        </div>
       </div>
 
       {showSettings && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(0,0,0,0.9)",
-            display: "flex",
-            flexDirection: "column",
-            zIndex: 100,
-          }}
-        >
-          <div
-            style={{
-              background: "#0e1520",
-              margin: "20px 12px",
-              borderRadius: "12px",
-              border: `1px solid ${C.border}`,
-              display: "flex",
-              flexDirection: "column",
-              maxHeight: "calc(100% - 40px)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                padding: "14px 16px 10px",
-                borderBottom: `1px solid ${C.border}`,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ fontWeight: 700, fontSize: "16px", color: C.blue }}>⚙ Réglages des liasses</span>
-              <button onClick={() => setShowSettings(false)} style={btn("#2a0f0f", C.red, "#5a1f1f")}>✕</button>
-            </div>
-            <div style={{ overflowY: "auto", padding: "10px 16px", flexGrow: 1, minHeight: 0 }}>
-              <div style={sectionLbl(C)}>Billets — nbre / liasse</div>
+        <div className="bank-overlay" onClick={() => setShowSettings(false)}>
+          <article className="bank-settings-card" onClick={(e) => e.stopPropagation()}>
+            <header className="bank-settings-header">
+              <span>Réglages des liasses</span>
+              <button type="button" className="bank-tool-btn" onClick={() => setShowSettings(false)}>✕</button>
+            </header>
+            <div className="bank-settings-body">
+              <div className="bank-settings-section-title">Billets — nbre / liasse</div>
               {ITEMS_DEFAULT.filter((i) => i.type === "bill").map((item) => (
                 <SettingRow
                   key={item.id}
@@ -365,7 +234,7 @@ export default function BankView({ onGoBack }: BankViewProps) {
                   onChange={(v) => setTempPacks((p) => ({ ...p, [item.id]: v }))}
                 />
               ))}
-              <div style={{ ...sectionLbl(C), marginTop: "14px" }}>Pièces — nbre / rouleau</div>
+              <div className="bank-settings-section-title">Pièces — nbre / rouleau</div>
               {ITEMS_DEFAULT.filter((i) => i.type === "coin").map((item) => (
                 <SettingRow
                   key={item.id}
@@ -375,57 +244,16 @@ export default function BankView({ onGoBack }: BankViewProps) {
                 />
               ))}
             </div>
-            <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
-              <button
-                onClick={saveSettings}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "#0a2a14",
-                  border: "1px solid #2ecc71",
-                  borderRadius: "8px",
-                  color: C.green,
-                  fontFamily: "inherit",
-                  fontSize: "15px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                ✓ Enregistrer
-              </button>
-            </div>
-          </div>
+            <button type="button" className="bank-save-btn ready" onClick={saveSettings}>
+              ✓ Enregistrer
+            </button>
+          </article>
         </div>
       )}
 
       {showReceipt && receiptData && (
-        <div
-          onClick={() => setShowReceipt(false)}
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(0,0,0,0.88)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 200,
-            padding: "16px",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#fff",
-              color: "#000",
-              fontFamily: "'DM Mono', 'Courier New', monospace",
-              borderRadius: "3px",
-              width: "100%",
-              maxWidth: "320px",
-              padding: "20px 18px 14px",
-              boxShadow: "0 16px 60px rgba(0,0,0,0.8)",
-            }}
-          >
+        <div className="bank-receipt-overlay" onClick={() => setShowReceipt(false)}>
+          <div className="bank-receipt-paper" onClick={(e) => e.stopPropagation()}>
             <div style={{ textAlign: "center", marginBottom: "6px" }}>
               <div style={{ fontSize: "11px", letterSpacing: "0.2em", color: "#555", textTransform: "uppercase" }}>
                 Récapitulatif
@@ -502,7 +330,7 @@ export default function BankView({ onGoBack }: BankViewProps) {
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -512,20 +340,9 @@ function Row({ item, qty, raw, pack, onChange }: RowProps) {
   const remainder = qty % pack;
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: GRID,
-        padding: "6px 16px",
-        alignItems: "center",
-        borderBottom: `1px solid ${C.borderLight}`,
-        background: qty > 0 ? C.bgRowActive : C.bgRow,
-        transition: "background 0.15s",
-      }}
-    >
-      <div style={{ fontSize: "16px", fontWeight: 700, color: item.type === "coin" ? C.coin : C.bill }}>{item.label}</div>
-
-      <div style={{ display: "flex", justifyContent: "center" }}>
+    <div className={`bank-row${qty > 0 ? ' active' : ''}`}>
+      <div className={`bank-row-value bank-row-value-${item.type}`}>{item.label}</div>
+      <div className="bank-row-qty">
         <input
           type="number"
           inputMode="numeric"
@@ -534,49 +351,36 @@ function Row({ item, qty, raw, pack, onChange }: RowProps) {
           value={raw}
           placeholder="0"
           onChange={(e) => onChange(item.id, e.target.value)}
-          style={{
-            width: "80px",
-            padding: "7px 8px",
-            background: qty > 0 ? "#0a2a14" : "#0e1520",
-            border: `1px solid ${qty > 0 ? "#2ecc71" : C.border}`,
-            borderRadius: "6px",
-            color: qty > 0 ? C.green : C.textMuted,
-            fontSize: "17px",
-            fontFamily: "inherit",
-            textAlign: "center",
-            outline: "none",
-          }}
+          className={`bank-row-input${qty > 0 ? ' active' : ''}`}
         />
       </div>
-
-      <div style={{ textAlign: "center" }}>
+      <div className="bank-row-pack">
         {qty > 0 ? (
           <>
             {rollsInt > 0 ? (
-              <div style={{ fontSize: "13px", fontWeight: 700, color: C.gold, lineHeight: 1.25 }}>
+              <div className="bank-row-pack-main">
                 {rollsInt} {packLabel(item.type, rollsInt)}
               </div>
             ) : (
-              <div style={{ fontSize: "12px", color: C.textDisabled, lineHeight: 1.25 }}>—</div>
+              <div className="bank-row-pack-empty">—</div>
             )}
             {remainder > 0 ? (
-              <div style={{ fontSize: "12px", color: C.textSecond, lineHeight: 1.35 }}>
+              <div className="bank-row-pack-sub">
                 {remainder} {unitLabel(item.type, remainder)}
               </div>
             ) : rollsInt > 0 ? (
-              <div style={{ fontSize: "11px", color: C.textMuted, lineHeight: 1.35 }}>0 restant</div>
+              <div className="bank-row-pack-sub muted">0 restant</div>
             ) : null}
           </>
         ) : (
-          <span style={{ fontSize: "14px", color: C.textDisabled }}>—</span>
+          <span className="bank-row-pack-empty">—</span>
         )}
       </div>
-
-      <div style={{ textAlign: "right" }}>
+      <div className="bank-row-sum">
         {qty > 0 ? (
-          <div style={{ fontSize: "15px", fontWeight: 700, color: C.green }}>{fmt(subtotal)}</div>
+          <span className="bank-row-sum-amount">{fmt(subtotal)}</span>
         ) : (
-          <span style={{ fontSize: "14px", color: C.textDisabled }}>—</span>
+          <span className="bank-row-pack-empty">—</span>
         )}
       </div>
     </div>
@@ -611,90 +415,19 @@ function TicketDivider({ dashed }: TicketDividerProps) {
   return <div style={{ borderTop: dashed ? "1px dashed #aaa" : "2px solid #000", margin: "5px 0" }} />;
 }
 
-function SectionLabel({ label }: SectionLabelProps) {
-  return (
-    <div
-      style={{
-        fontSize: "11px",
-        letterSpacing: "0.14em",
-        color: C.textSecond,
-        fontWeight: 700,
-        padding: "5px 16px 4px",
-        background: C.bgSection,
-        borderBottom: `1px solid ${C.border}`,
-        borderTop: `1px solid ${C.border}`,
-        flexShrink: 0,
-        textTransform: "uppercase",
-      }}
-    >
-      {label}
-    </div>
-  );
-}
-
 function SettingRow({ item, val, onChange }: SettingRowProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "7px 0",
-        borderBottom: `1px solid ${C.borderLight}`,
-      }}
-    >
-      <span style={{ fontSize: "15px", fontWeight: 700, color: item.type === "coin" ? C.coin : C.bill }}>{item.label}</span>
+    <div className="bank-setting-row">
+      <span className={`bank-row-value-${item.type} bank-setting-label`}>{item.label}</span>
       <input
         type="number"
         inputMode="numeric"
         min="1"
         value={val}
         onChange={(e) => onChange(parseInt(e.target.value, 10) || 1)}
-        style={{
-          width: "70px",
-          padding: "5px 8px",
-          background: C.bg,
-          border: `1px solid ${C.border}`,
-          borderRadius: "6px",
-          color: C.textPrimary,
-          fontFamily: "inherit",
-          fontSize: "15px",
-          textAlign: "center",
-          outline: "none",
-        }}
+        className="bank-setting-input"
       />
     </div>
   );
 }
 
-const colHead = (c: typeof C): CSSProperties => ({
-  fontSize: "10px",
-  textTransform: "uppercase",
-  letterSpacing: "0.12em",
-  color: c.textSecond,
-  fontWeight: 700,
-});
-
-const sectionLbl = (c: typeof C): CSSProperties => ({
-  fontSize: "11px",
-  textTransform: "uppercase",
-  letterSpacing: "0.12em",
-  fontWeight: 700,
-  color: c.textSecond,
-  marginBottom: "6px",
-  paddingBottom: "4px",
-  borderBottom: `1px solid ${c.border}`,
-});
-
-const btn = (bg: string, color: string, border: string): CSSProperties => ({
-  padding: "8px 12px",
-  background: bg,
-  border: `1px solid ${border}`,
-  borderRadius: "7px",
-  color,
-  fontFamily: "'DM Mono', monospace",
-  fontSize: "13px",
-  fontWeight: 700,
-  cursor: "pointer",
-  letterSpacing: "0.03em",
-});

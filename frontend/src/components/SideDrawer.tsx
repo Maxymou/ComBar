@@ -10,7 +10,6 @@ type View =
   | 'sync'
   | 'bank'
   | 'salesManagement'
-  | 'settings'
   | 'debug';
 
 interface DrawerItem {
@@ -44,8 +43,6 @@ interface SideDrawerProps {
 
 const MAIN_MENU_ITEMS: DrawerItem[] = [
   { id: 'bank', label: 'Banque', icon: '🏦', enabled: true },
-  { id: 'salesManagement', label: 'Gestion des ventes', icon: '🧾', enabled: true },
-  { id: 'settings', label: 'Paramètres', icon: '⚙️', enabled: false },
 ];
 
 function formatLastSeen(isoDate: string): string {
@@ -68,6 +65,7 @@ function formatLastSeen(isoDate: string): string {
 
 const ADMIN_MENU_ITEMS: DrawerItem[] = [
   { id: 'prices', label: 'Gestion des prix', icon: '💰', enabled: true },
+  { id: 'salesManagement', label: 'Gestion des produits', icon: '🧾', enabled: true },
   { id: 'sync', label: 'Commandes en attente', icon: '🔁', enabled: true },
   { id: 'debug', label: 'Débug', icon: '🛠️', enabled: true },
 ];
@@ -229,7 +227,7 @@ export default function SideDrawer({
                 </div>
                 <div className="drawer-build-info">v{buildVersion} · {buildTimestamp} · PWA {pwaEnabled ? 'ON' : 'OFF'}</div>
               </section>
-              {MAIN_MENU_ITEMS.slice(0, 2).map(item => (
+              {MAIN_MENU_ITEMS.map(item => (
                 <button
                   key={item.id}
                   type="button"
@@ -259,23 +257,6 @@ export default function SideDrawer({
                 <span className="side-drawer-item-icon" aria-hidden="true">🔐</span>
                 <span className="side-drawer-item-text">Administration</span>
               </button>
-              {MAIN_MENU_ITEMS.slice(2).map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`side-drawer-item ${activeView === item.id ? 'active' : ''}`}
-                  onClick={() => {
-                    if (!item.enabled) return;
-                    onSelect(item.id);
-                  }}
-                  disabled={!item.enabled}
-                  aria-current={activeView === item.id ? 'page' : undefined}
-                >
-                  <span className="side-drawer-item-icon" aria-hidden="true">{item.icon}</span>
-                  <span className="side-drawer-item-text">{item.label}</span>
-                  {!item.enabled && <span className="side-drawer-item-badge">Bientôt</span>}
-                </button>
-              ))}
             </>
           ) : (
             <>
