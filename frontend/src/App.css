@@ -503,7 +503,22 @@ body::before{
 .app.hh .card.on-drink { border-color: #FF2079; background: #160010; }
 .card.on-food  { border-color: #FF9800; background: #181000; }
 
-.card-icon { font-size: 1.9rem; line-height: 1; }
+.card-icon {
+  width: 3.2rem;
+  height: 3.2rem;
+  min-height: 3.2rem;
+  max-height: 3.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.9rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.card-icon span {
+  font-size: inherit;
+  line-height: 1;
+}
 .card-name {
   font-size: 0.64rem;
   font-weight: 600;
@@ -1112,7 +1127,20 @@ body::before{
   border-radius: 12px;
   margin-bottom: 6px;
 }
-.price-row-icon { font-size: 1.4rem; flex-shrink: 0; }
+.price-row-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.price-row-icon span {
+  font-size: inherit;
+  line-height: 1;
+}
 .price-row-name {
   flex: 1;
   font-size: 0.88rem;
@@ -1533,7 +1561,20 @@ body::before{
 .sales-product-list { display:flex; flex-direction:column; gap:10px; padding-bottom:20px; }
 .sales-product-item { background:#171717; border:1px solid #313131; border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:8px; }
 .sales-item-main { display:flex; gap:10px; align-items:center; }
-.sales-product-icon { font-size:1.5rem; }
+.sales-product-icon {
+  width: 2.6rem;
+  height: 2.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size:1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.sales-product-icon span {
+  font-size: inherit;
+  line-height: 1;
+}
 .sales-item-main p { color:#9a9a9a; font-size:.8rem; }
 .sales-item-prices { display:flex; gap:10px; font-weight:700; }
 .sales-badges { display:flex; gap:6px; flex-wrap:wrap; }
@@ -2566,5 +2607,30 @@ body::before{
   }
 }
 
-.product-icon-image{width:100%;height:100%;max-width:2.8rem;max-height:2.8rem;object-fit:contain;display:inline-block;}
+.card-icon .product-icon-image {
+  width: 2.6rem;
+  height: 2.6rem;
+  max-width: 2.6rem;
+  max-height: 2.6rem;
+  object-fit: contain;
+  display: block;
+}
+
+.price-row-icon .product-icon-image {
+  width: 2rem;
+  height: 2rem;
+  max-width: 2rem;
+  max-height: 2rem;
+  object-fit: contain;
+  display: block;
+}
+
+.sales-product-icon .product-icon-image {
+  width: 2.2rem;
+  height: 2.2rem;
+  max-width: 2.2rem;
+  max-height: 2.2rem;
+  object-fit: contain;
+  display: block;
+}
 
