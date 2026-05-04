@@ -69,6 +69,8 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS icon_url TEXT;
 `;
 
 const SEED_SQL = `
+-- Seed data must be non-destructive: only create missing defaults and never overwrite
+-- user customizations made from the management interface.
 INSERT INTO categories (id, name, display_order) VALUES
   (1, 'drink', 0),
   (2, 'consigne', 1),
@@ -91,18 +93,7 @@ INSERT INTO products (id, name, icon, icon_type, icon_url, normal_price, hh_pric
   ('vege',           'Végé',         '🥗', 'emoji', null, 5,  5,  false, 3, 1, true, null),
   ('coca',           'Coca',         '🥤', 'emoji', null, 2,  2,  false, 4, 0, true, null),
   ('jambonBeurre',   'Jambon beurre','🥪', 'emoji', null, 5,  5,  false, 5, 0, true, null)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  icon = EXCLUDED.icon,
-  icon_type = EXCLUDED.icon_type,
-  icon_url = EXCLUDED.icon_url,
-  normal_price = EXCLUDED.normal_price,
-  hh_price = EXCLUDED.hh_price,
-  hh_bonus = EXCLUDED.hh_bonus,
-  category_id = EXCLUDED.category_id,
-  display_order = EXCLUDED.display_order,
-  active = EXCLUDED.active,
-  bonus_parent_product_id = EXCLUDED.bonus_parent_product_id;
+ON CONFLICT (id) DO NOTHING;
 
 
 INSERT INTO app_settings (key, value) VALUES
