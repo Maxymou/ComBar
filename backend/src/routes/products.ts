@@ -13,7 +13,7 @@ const SUPPORTED_IMAGE_MIME_TYPES = ['image/png'];
 
 const imageUploadParser = express.raw({
   type: [...SUPPORTED_IMAGE_MIME_TYPES, 'application/octet-stream'],
-  limit: '2mb',
+  limit: '5mb',
 });
 
 

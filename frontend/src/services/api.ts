@@ -2,7 +2,98 @@ import { Product, PendingOrder, RealtimeState, Category, ProductManagementPayloa
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-const ALLOWED_PRODUCT_IMAGE_TYPES = new Set(['image/png']);
+const ALLOWED_PRODUCT_IMAGE_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+]);
+
+const MAX_PRODUCT_IMAGE_DIMENSION = 512;
+const MAX_PRODUCT_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
+
+function normalizePngFileName(originalName: string): string {
+  const trimmed = (originalName || 'product').trim();
+  const nameWithoutExt = trimmed.replace(/\.[^/.]+$/u, '') || 'product';
+  return `${nameWithoutExt}.png`;
+}
+
+async function loadImageForConversion(file: File): Promise<ImageBitmap | HTMLImageElement> {
+  if (typeof createImageBitmap === 'function') {
+    return createImageBitmap(file);
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.decoding = 'async';
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Impossible de lire l'image sélectionnée."));
+      image.src = objectUrl;
+    });
+    return image;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function convertProductImageToPng(file: File): Promise<Blob> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Le fichier sélectionné n’est pas une image.');
+  }
+  if (file.type && !ALLOWED_PRODUCT_IMAGE_TYPES.has(file.type)) {
+    throw new Error('Format non supporté. Utilisez PNG, JPEG/JPG ou WebP.');
+  }
+
+  let sourceImage: ImageBitmap | HTMLImageElement;
+  try {
+    sourceImage = await loadImageForConversion(file);
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : "Impossible de lire l'image.");
+  }
+
+  const width = sourceImage.width;
+  const height = sourceImage.height;
+  if (!width || !height) {
+    throw new Error('Image invalide: dimensions introuvables.');
+  }
+
+  const canvas = document.createElement('canvas');
+  const squareSize = Math.min(MAX_PRODUCT_IMAGE_DIMENSION, Math.max(width, height));
+  canvas.width = squareSize;
+  canvas.height = squareSize;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Conversion impossible: canvas indisponible.');
+  }
+
+  ctx.clearRect(0, 0, squareSize, squareSize);
+  const scale = Math.min(squareSize / width, squareSize / height);
+  const drawWidth = Math.round(width * scale);
+  const drawHeight = Math.round(height * scale);
+  const offsetX = Math.round((squareSize - drawWidth) / 2);
+  const offsetY = Math.round((squareSize - drawHeight) / 2);
+  ctx.drawImage(sourceImage, offsetX, offsetY, drawWidth, drawHeight);
+
+  if ('close' in sourceImage && typeof sourceImage.close === 'function') {
+    sourceImage.close();
+  }
+
+  const pngBlob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), 'image/png');
+  });
+
+  if (!pngBlob) {
+    throw new Error('Conversion impossible: export PNG échoué.');
+  }
+  if (pngBlob.size > MAX_PRODUCT_IMAGE_SIZE_BYTES) {
+    throw new Error('Le PNG converti est trop lourd. Essayez une image plus petite.');
+  }
+
+  return pngBlob;
+}
 
 
 export async function fetchProducts(): Promise<Product[]> {
@@ -132,17 +223,16 @@ export async function createProduct(payload: ProductManagementPayload): Promise<
 }
 
 export async function uploadProductImage(file: File): Promise<string> {
-  if (!ALLOWED_PRODUCT_IMAGE_TYPES.has(file.type)) {
-    throw new Error('Format non supporté. Utilisez un fichier PNG.');
-  }
+  const pngBlob = await convertProductImageToPng(file);
+  const safeFileName = normalizePngFileName(file.name);
 
   const res = await fetch(`${API_BASE}/api/products/upload`, {
     method: 'POST',
     headers: {
-      'Content-Type': file.type || 'image/png',
-      'X-File-Name': file.name,
+      'Content-Type': 'image/png',
+      'X-File-Name': safeFileName,
     },
-    body: file,
+    body: pngBlob,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
